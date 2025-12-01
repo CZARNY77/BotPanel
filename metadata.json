@@ -1,0 +1,5 @@
+{
+  "name": "BotCommandCenter",
+  "description": "Nowoczesny panel konfiguracyjny dla bota Discord z asystentem AI (Gemini).",
+  "requestFramePermissions": []
+}
