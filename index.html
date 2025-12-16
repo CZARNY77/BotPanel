@@ -1,116 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Discord Bot Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              // Using CSS Variables for dynamic theming
-              theme: {
-                bg: 'var(--color-bg)',
-                sidebar: 'var(--color-sidebar)',
-                card: 'var(--color-card)',
-                border: 'var(--color-border)',
-                hover: 'var(--color-hover)',
-                primary: 'var(--color-primary)',
-                secondary: 'var(--color-secondary)'
-              },
-              // Discord Colors (Static)
-              discord: {
-                bg: '#313338',
-                sidebar: '#2b2d31',
-                active: '#3f4147',
-                blurple: '#5865F2',
-                green: '#23a559',
-                red: '#da373c',
-              }
-            }
-          },
-        },
-      }
-    </script>
-    <style>
-      /* --- THEME DEFINITIONS --- */
-      :root {
-        /* Default: Midnight (Blue/Black) */
-        --color-bg: #0b0d12;
-        --color-sidebar: #12141c;
-        --color-card: #1b1e29;
-        --color-border: #272a38;
-        --color-hover: #252836;
-        --color-primary: #3b82f6;   /* Vivid Blue */
-        --color-secondary: #6366f1; /* Indigo */
-      }
-
-      [data-theme='gold'] {
-        /* Warlord: Gold/Brown (ConqSite inspired) */
-        --color-bg: #46433a;        /* Dark Warm Grey/Brown */
-        --color-sidebar: #332f2a;   /* Darker Brown */
-        --color-card: #524d44;      /* Lighter Brown Card */
-        --color-border: #6b6458;    /* Muted Brown Border */
-        --color-hover: #635d52;     /* Hover state */
-        --color-primary: #dcb16d;   /* Gold */
-        --color-secondary: #e86b36; /* Orange/Copper accent */
-      }
-
-      body {
-        background-color: var(--color-bg);
-        color: #dbdee1;
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-
-      /* Transitions for theme elements */
-      .bg-theme-bg, .bg-theme-sidebar, .bg-theme-card, .border-theme-border {
-        transition: background-color 0.3s ease, border-color 0.3s ease;
-      }
-      
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: var(--color-sidebar); 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--color-border); 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: var(--color-primary); 
-      }
-      
-      .animate-fade-in {
-        animation: fadeIn 0.3s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(5px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
-  }
-}
-</script>
-</head>
-  <body>
+    <title>ConqBot Control Panel</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-surface-900 text-slate-100">
     <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
