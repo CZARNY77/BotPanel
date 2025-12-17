@@ -3,17 +3,17 @@ import TopBar from "../components/TopBar";
 import { changeHouseName } from "../api/client";
 import { usePanelContext } from "../hooks/usePanelContext";
 
-const actions = [
-  { label: "Auto-moderacja", desc: "Filtr wulgaryzmów i flood.", enabled: true },
-  { label: "Anty-raid", desc: "Ochrona przed masowym joinem.", enabled: true },
-  { label: "Logi moderacji", desc: "Zapis akcji w dedykowanym kanale.", enabled: false }
-];
-
 export default function ModerationPage() {
   const { selectedServerId } = usePanelContext();
-  const [houseName, setHouseName] = useState("Główna siedziba");
+  const [houseName, setHouseName] = useState("Midnight Shield");
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [toggles, setToggles] = useState([
+    { key: "profanity", label: "Profanity Filter", desc: "Blokada wulgaryzmów", enabled: true },
+    { key: "antiLink", label: "Anti-Link", desc: "Usuwanie linków bez uprawnień", enabled: true },
+    { key: "antiCaps", label: "Anti-Caps", desc: "Limit CAPS LOCK", enabled: false },
+    { key: "raidMode", label: "Raid Mode", desc: "Tryb lockdown dla mass-join", enabled: false }
+  ]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -39,17 +39,21 @@ export default function ModerationPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="glass-panel lg:col-span-2 rounded-3xl p-6 shadow-card space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Funkcje</p>
-            <h2 className="text-xl font-semibold text-white">Moduły</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-slate-400">Funkcje</p>
+              <h2 className="text-xl font-semibold text-white">Moduły bezpieczeństwa</h2>
+            </div>
+            <span className="rounded-full bg-accent-500/20 px-3 py-1 text-xs text-accent-100">
+              Live config
+            </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {actions.map((action) => (
+            {toggles.map((action) => (
               <div
-                key={action.label}
-                className="flex items-start gap-3 rounded-2xl border border-white/5 bg-white/5 p-4"
+                key={action.key}
+                className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 p-4"
               >
-                <div className="mt-1 h-3 w-3 rounded-full bg-accent-400" />
                 <div>
                   <p className="font-semibold text-white">{action.label}</p>
                   <p className="text-sm text-slate-400">{action.desc}</p>
@@ -57,6 +61,25 @@ export default function ModerationPage() {
                     Status: {action.enabled ? "aktywny" : "wstrzymany"}
                   </p>
                 </div>
+                <button
+                  onClick={() =>
+                    setToggles((prev) =>
+                      prev.map((t) =>
+                        t.key === action.key ? { ...t, enabled: !t.enabled } : t
+                      )
+                    )
+                  }
+                  className={`relative h-6 w-12 rounded-full transition ${
+                    action.enabled ? "bg-accent-500" : "bg-white/10"
+                  }`}
+                  aria-pressed={action.enabled}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
+                      action.enabled ? "right-0.5" : "left-0.5"
+                    }`}
+                  />
+                </button>
               </div>
             ))}
           </div>
@@ -80,6 +103,11 @@ export default function ModerationPage() {
             </button>
             {status && <p className="text-sm text-slate-300">{status}</p>}
           </form>
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+            • Przekazuj short-lived token OAuth2 w nagłówku autoryzacji. <br />
+            • Backend weryfikuje role/admin per guild przez Discord, nie ufaj klientowi. <br />
+            • Docelowe rozszerzenia (Raid metrics, AI heurystyki) opiszemy w specyfikacji backend.
+          </div>
         </section>
       </div>
     </div>

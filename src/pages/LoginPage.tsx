@@ -7,7 +7,8 @@ export default function LoginPage() {
         <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br from-accent-500 to-success-500" />
         <h1 className="text-3xl font-bold text-white">ConqBot Control Panel</h1>
         <p className="mt-2 text-slate-400">
-          Zaloguj się przez Discord. Backend ustawi sesję w HTTP-only cookie; frontend nie przechowuje tokenów.
+          Zaloguj się przez Discord. Backend wystawi short-lived token (conqbot_token) + secure cookie; każda
+          kolejna prośba do API będzie autoryzowana Bearer tokenem.
         </p>
         <div className="mt-6 flex justify-center">
           <a

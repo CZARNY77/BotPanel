@@ -4,11 +4,18 @@ const API_BASE = "https://conqbot.blcdev.com";
 export const API_URL = `${API_BASE}/api`;
 export const AUTH_URL = `${API_BASE}/auth/discord`;
 
+function getAuthToken() {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem("conqbot_token");
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getAuthToken();
   const response = await fetch(`${API_URL}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {})
     },
     ...init

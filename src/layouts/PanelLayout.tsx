@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import { useServers } from "../hooks/useServers";
 import { GuildServer } from "../api/types";
 import { AUTH_URL } from "../api/client";
+import ServerRail from "../components/ServerRail";
 
 export type PanelOutletContext = {
   servers: GuildServer[];
@@ -14,10 +15,10 @@ export type PanelOutletContext = {
 };
 
 const navItems = [
-  { label: "Dashboard", to: "/dashboard", icon: "📊" },
-  { label: "Welcome Messages", to: "/welcome", icon: "👋" },
-  { label: "Events Editor", to: "/events", icon: "📅" },
-  { label: "Emoji Manager", to: "/emoji", icon: "😀" },
+  { label: "Overview", to: "/dashboard", icon: "🛰️" },
+  { label: "Welcome Messages", to: "/welcome", icon: "📡" },
+  { label: "Event Creator", to: "/events", icon: "📅" },
+  { label: "Emoji Triggers", to: "/emoji", icon: "🎯" },
   { label: "Moderation", to: "/moderation", icon: "🛡️" }
 ];
 
@@ -26,6 +27,10 @@ export default function PanelLayout() {
   const navigate = useNavigate();
   const { servers, loading, error, unauthorized, refresh } = useServers();
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"midnight" | "warlord">(() => {
+    if (typeof localStorage === "undefined") return "midnight";
+    return (localStorage.getItem("panel-theme") as "midnight" | "warlord") ?? "midnight";
+  });
 
   useEffect(() => {
     if (!selectedServerId && servers.length > 0) {
@@ -38,6 +43,13 @@ export default function PanelLayout() {
       navigate("/dashboard", { replace: true });
     }
   }, [location.pathname, navigate]);
+
+  useEffect(() => {
+    document.body.dataset.theme = theme;
+    localStorage.setItem("panel-theme", theme);
+  }, [theme]);
+
+  const handleThemeChange = (mode: "midnight" | "warlord") => setTheme(mode);
 
   const selectedServer = useMemo(
     () => servers.find((s) => s.id === selectedServerId) ?? null,
@@ -76,13 +88,18 @@ export default function PanelLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-900 px-4 py-6 md:px-8">
-      <div className="mx-auto flex max-w-7xl gap-6">
-        <Sidebar
+    <div className="min-h-screen bg-gradient-to-br from-surface-900 via-surface-800 to-black px-3 py-4 md:px-6">
+      <div className="mx-auto flex max-w-7xl gap-4">
+        <ServerRail
           servers={servers}
           selectedServerId={selectedServerId}
-          onSelectServer={setSelectedServerId}
+          onSelect={setSelectedServerId}
+        />
+        <Sidebar
+          selectedServer={selectedServer}
           navItems={navItems}
+          theme={theme}
+          onThemeChange={handleThemeChange}
         />
         <main className="flex-1">
           {error && (

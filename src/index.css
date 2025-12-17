@@ -4,13 +4,41 @@
 
 :root {
   color-scheme: dark;
+  --bg: #0b0d12;
+  --bg-glow: rgba(88, 101, 242, 0.12);
+  --bg-panel: rgba(17, 24, 39, 0.75);
+  --accent: #6e7bff;
+  --accent-strong: #5865f2;
+  --grid: rgba(255, 255, 255, 0.04);
 }
 
 body {
-  @apply min-h-screen bg-surface-900 text-slate-100 antialiased;
-  background: radial-gradient(circle at 20% 20%, rgba(88, 101, 242, 0.12), transparent 35%),
-    radial-gradient(circle at 80% 0%, rgba(59, 165, 93, 0.1), transparent 25%),
-    #0b0f16;
+  @apply min-h-screen text-slate-100 antialiased;
+  background:
+    radial-gradient(circle at 15% 20%, var(--bg-glow), transparent 36%),
+    radial-gradient(circle at 80% 0%, rgba(59, 165, 93, 0.08), transparent 25%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 55%),
+    var(--bg);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(0deg, var(--grid) 1px, transparent 1px);
+  background-size: 120px 120px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body[data-theme="warlord"] {
+  --bg: #0f0c09;
+  --bg-glow: rgba(220, 177, 109, 0.15);
+  --bg-panel: rgba(44, 34, 25, 0.85);
+  --accent: #dcb16d;
+  --accent-strong: #f2c572;
+  --grid: rgba(220, 177, 109, 0.05);
 }
 
 a {
@@ -18,5 +46,6 @@ a {
 }
 
 .glass-panel {
-  @apply bg-surface-800/80 backdrop-blur-md border border-white/5;
+  @apply backdrop-blur-md border border-white/5;
+  background: var(--bg-panel);
 }
