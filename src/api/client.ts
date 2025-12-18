@@ -2,7 +2,14 @@ import { ApiError, BotEvent, EmojiItem, GuildServer } from "./types";
 
 const API_BASE = "https://conqbot.blcdev.com";
 export const API_URL = `${API_BASE}/api/panel`;
-export const AUTH_URL = `${API_BASE}/auth/discord`;
+
+export function buildAuthUrl() {
+  if (typeof window === "undefined") {
+    return `${API_URL}/auth/discord`;
+  }
+  const redirect = encodeURIComponent(`${window.location.origin}/login`);
+  return `${API_URL}/auth/discord?redirect_uri=${redirect}`;
+}
 
 function getAuthToken() {
   if (typeof localStorage === "undefined") return null;
@@ -58,5 +65,17 @@ export function changeHouseName(serverId: string, house: string) {
   return fetchJson<{ status: string }>("/house_name", {
     method: "POST",
     body: JSON.stringify({ serverId, house })
+  });
+}
+
+export function loginWithCode(code: string, redirectUri: string) {
+  return fetchJson<{
+    status: string;
+    token: { access_token: string; expires_at: number; token_type: string };
+    user: { id: string; username?: string; avatar?: string };
+    guild_ids: number[];
+  }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ code, redirect_uri: redirectUri })
   });
 }

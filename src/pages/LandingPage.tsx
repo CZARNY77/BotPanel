@@ -1,4 +1,4 @@
-import { AUTH_URL } from "../api/client";
+import { buildAuthUrl } from "../api/client";
 
 export default function LandingPage() {
   return (
@@ -15,7 +15,7 @@ export default function LandingPage() {
           </div>
           <div className="flex gap-3">
             <a
-              href={AUTH_URL}
+              href={buildAuthUrl()}
               className="rounded-2xl bg-accent-500 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-accent-400"
             >
               Zaloguj przez Discord
@@ -88,7 +88,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-4 flex gap-3">
             <a
-              href={AUTH_URL}
+              href={buildAuthUrl()}
               className="rounded-2xl bg-accent-500 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-accent-400"
             >
               Zaloguj i nadaj uprawnienia

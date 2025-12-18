@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { useServers } from "../hooks/useServers";
 import { GuildServer } from "../api/types";
-import { AUTH_URL } from "../api/client";
+import { buildAuthUrl } from "../api/client";
 import ServerRail from "../components/ServerRail";
 
 export type PanelOutletContext = {
@@ -60,7 +60,7 @@ export default function PanelLayout() {
           </p>
           <div className="mt-6 flex justify-center">
             <a
-              href={AUTH_URL}
+              href={buildAuthUrl()}
               className="rounded-2xl bg-accent-500 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-accent-400"
             >
               Przejdź do logowania Discord
