@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { useServers } from "../hooks/useServers";
@@ -15,16 +15,14 @@ export type PanelOutletContext = {
 };
 
 const navItems = [
-  { label: "Overview", to: "/dashboard", icon: "🛰️" },
-  { label: "Welcome Messages", to: "/welcome", icon: "📡" },
-  { label: "Event Creator", to: "/events", icon: "📅" },
-  { label: "Emoji Triggers", to: "/emoji", icon: "🎯" },
-  { label: "Moderation", to: "/moderation", icon: "🛡️" }
+  { label: "Overview", to: "/panel/dashboard", icon: "🛰️" },
+  { label: "Welcome Messages", to: "/panel/welcome", icon: "📡" },
+  { label: "Event Creator", to: "/panel/events", icon: "📅" },
+  { label: "Emoji Triggers", to: "/panel/emoji", icon: "🎯" },
+  { label: "Moderation", to: "/panel/moderation", icon: "🛡️" }
 ];
 
 export default function PanelLayout() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const { servers, loading, error, unauthorized, refresh } = useServers();
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"midnight" | "warlord">(() => {
@@ -37,12 +35,6 @@ export default function PanelLayout() {
       setSelectedServerId(servers[0].id);
     }
   }, [servers, selectedServerId]);
-
-  useEffect(() => {
-    if (location.pathname === "/") {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [location.pathname, navigate]);
 
   useEffect(() => {
     document.body.dataset.theme = theme;
