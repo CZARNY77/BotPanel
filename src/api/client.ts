@@ -1,7 +1,7 @@
 import { ApiError, BotEvent, EmojiItem, GuildServer } from "./types";
 
 const API_BASE = "https://conqbot.blcdev.com";
-export const API_URL = `${API_BASE}/api`;
+export const API_URL = `${API_BASE}/api/panel`;
 export const AUTH_URL = `${API_BASE}/auth/discord`;
 
 function getAuthToken() {
@@ -25,7 +25,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const payload = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    const error: ApiError = new Error(payload?.message || "Request failed");
+    const error: ApiError = new Error(payload?.error || payload?.message || "Request failed");
     error.status = response.status;
     throw error;
   }
@@ -34,7 +34,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function getUserServers() {
-  return fetchJson<GuildServer[]>("/user_servers");
+  return fetchJson<{ guilds: GuildServer[] }>("/guilds").then((res) => res.guilds ?? []);
 }
 
 export function getServerVerification(serverId: string) {
@@ -44,18 +44,18 @@ export function getServerVerification(serverId: string) {
 
 export function getEmojis(serverId: string) {
   const query = new URLSearchParams({ server_id: serverId }).toString();
-  return fetchJson<EmojiItem[]>(`/get_emojis?${query}`);
+  return fetchJson<{ emojis: EmojiItem[] }>(`/emojis?${query}`).then((res) => res.emojis ?? []);
 }
 
 export function createEvent(event: BotEvent & { serverId: string }) {
-  return fetchJson<{ ok: boolean; id?: string }>("/create_event", {
+  return fetchJson<{ status: string; event?: BotEvent }>("/events", {
     method: "POST",
     body: JSON.stringify(event)
   });
 }
 
 export function changeHouseName(serverId: string, house: string) {
-  return fetchJson<{ ok: boolean; house: string }>("/change_house_name", {
+  return fetchJson<{ status: string }>("/house_name", {
     method: "POST",
     body: JSON.stringify({ serverId, house })
   });

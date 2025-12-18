@@ -22,7 +22,7 @@ export default function ModerationPage() {
     setStatus(null);
     try {
       await changeHouseName(selectedServerId, houseName);
-      setStatus("Zmieniono nazwę domu moderacji poprzez /api/change_house_name.");
+      setStatus("Zmieniono nazwę domu moderacji poprzez /api/panel/house_name.");
     } catch (err) {
       setStatus((err as Error).message ?? "Nie udało się zapisać.");
     } finally {

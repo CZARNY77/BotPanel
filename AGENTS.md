@@ -1,35 +1,35 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- App entry lives in `src/main.tsx` and routes in `src/App.tsx`, with shared layout at `src/layouts/PanelLayout.tsx`.
-- Feature pages sit in `src/pages`, reusable UI in `src/components`, shared hooks in `src/hooks`, and API helpers/types in `src/api`.
-- Global styling and Tailwind layers are in `src/index.css`; design tokens are extended in `tailwind.config.js`.
-- Static assets reside in `public/`; Vite config and TypeScript settings are at the repo root.
+- Entrypoint at `src/main.tsx`; app routing in `src/App.tsx`.
+- Layout shell in `src/layouts/PanelLayout.tsx`; feature views live under `src/pages` (Dashboard, Welcome, Events, Emoji, Moderation, auth/landing).
+- Reusable UI sits in `src/components`; shared logic in `src/hooks`; API helpers/types are in `src/api/client.ts` and `src/api/types.ts`.
+- Global styles and Tailwind layers are defined in `src/index.css`; tokens are extended via `tailwind.config.js`.
+- Static assets live in `public/`; backend draft notes sit in `docs/backend-temp-spec.md`; root holds Vite/TypeScript/PostCSS configs.
 
 ## Build, Test, and Development Commands
-- Install dependencies: `npm install`.
-- Run locally with hot reload: `npm run dev` (add `-- --host` to expose on LAN).
-- Production build: `npm run build`.
-- Preview built assets: `npm run preview`.
-- Type-checking/linting: `npm run lint` (runs `tsc --noEmit`).
+- `npm install` installs dependencies (Node 18+ recommended).
+- `npm run dev` starts the Vite dev server; add `-- --host` to expose on LAN or inside containers.
+- `npm run build` bundles to `dist/`; `npm run preview` serves the built output locally.
+- `npm run lint` runs `tsc --noEmit` for type safety; fix any errors before opening PRs.
 
 ## Coding Style & Naming Conventions
-- TypeScript + React 18 function components; prefer hooks for state/data fetching and keep components focused per file.
-- Use Tailwind utility classes for layout and color tokens (`surface`, `accent`, etc.); keep custom CSS minimal and in `index.css`.
-- Follow 2-space indentation, single quotes avoided in favor of double quotes (per existing files), and destructure props where practical.
-- Name components in `PascalCase`, hooks in `camelCase` with `use` prefix, and files to mirror their exported component/hook names.
+- TypeScript + JSX with function components; favor hooks and small, focused files.
+- Use 2-space indentation and double quotes to match existing code; prefer Tailwind utilities over custom CSS.
+- Name components in `PascalCase`, hooks in `camelCase` with a `use` prefix, and files after their primary export (e.g., `DashboardPage.tsx`).
+- Route redirects live in `src/App.tsx`; keep paths aligned with navigation links.
 
 ## Testing Guidelines
-- No automated test suite is present yet; when adding tests, prefer Vitest + React Testing Library in `src/__tests__` or alongside components as `*.test.tsx`.
-- Cover data-fetching hooks and routing behavior; stub network calls to `src/api/client.ts` to avoid hitting the live `API_BASE`.
-- Keep new features accompanied by targeted tests and run `npm run lint` before opening a PR.
+- No automated suite yet; add tests with Vitest + React Testing Library as `*.test.tsx` near components or in `src/__tests__`.
+- Mock calls hitting `src/api/client.ts` to avoid real `API_BASE`; cover routing redirects and auth flows when they are added.
+- Run `npm run lint` before commits to catch regressions early.
 
 ## Commit & Pull Request Guidelines
-- Use short, imperative subjects (e.g., `add dashboard stats`) and group work by scope. Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`) are preferred for clarity.
-- Keep commits focused; avoid mixing refactors with feature work.
-- PRs should include a summary of changes, screenshots or GIFs for UI updates, steps to reproduce/test, and links to related issues/tasks.
-- Note any API or configuration changes, especially if adjusting `API_BASE` or authentication flows.
+- History mixes numeric tags and conventional messages; prefer short, imperative subjects with Conventional Commit prefixes (`feat:`, `fix:`, `chore:`, `docs:`).
+- Keep commits scoped; note config changes (e.g., `API_BASE`) in their own commits when possible.
+- PRs should summarize scope, add screenshots/GIFs for UI changes, list manual test steps, link related issues/tasks, and call out breaking UX/API changes.
 
-## Configuration & Security Notes
-- API endpoints and OAuth entry points are defined in `src/api/client.ts` (`API_BASE`, `API_URL`, `AUTH_URL`). Update these per environment and avoid hardcoding secrets elsewhere.
-- The app expects HTTP-only cookies for auth; ensure backend CORS and cookie settings remain compatible when changing origins or enabling `--host`.
+## Security & Configuration Notes
+- `API_BASE`, `API_URL`, and `AUTH_URL` live in `src/api/client.ts`; update per environment and never commit secrets or tokens.
+- Auth relies on HTTP-only cookies plus a localStorage token; align frontend origin with backend CORS/cookie settings when using `--host` or deploying.
+- Before release, run `npm run build` to confirm type checks and bundling succeed.

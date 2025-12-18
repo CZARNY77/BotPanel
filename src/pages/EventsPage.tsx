@@ -45,7 +45,7 @@ export default function EventsPage() {
         { ...payload, recurrence: recurrence !== "Brak" ? recurrence : undefined, rolePing },
         ...prev
       ]);
-      setStatus("Event utworzony przez API /api/create_event.");
+      setStatus("Event zapisany w /api/panel/events.");
     } catch (err) {
       setStatus((err as Error).message ?? "Nie udało się utworzyć eventu.");
     } finally {

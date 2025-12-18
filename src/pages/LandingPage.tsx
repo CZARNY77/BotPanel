@@ -7,10 +7,10 @@ export default function LandingPage() {
         <header className="flex flex-col gap-4 rounded-3xl border border-white/5 bg-white/5 p-8 shadow-card lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35rem] text-accent-300">ConqBot</p>
-            <h1 className="text-4xl font-bold text-white">Cyber Command for Discord Servers</h1>
+            <h1 className="text-4xl font-bold text-white">Panel dowodzenia botem</h1>
             <p className="mt-3 max-w-2xl text-slate-300">
-              ConqBot to panel dowodzenia w estetyce Cyber-Military. Automatyzuje powitania, eventy,
-              emoji-triggery i moderację, zasilany przez backend ConqBot i Discord OAuth2.
+              Steruj automatyzacjami ConqBot: powitania, eventy, emoji-triggery, moderacja i monitoring
+              aktywności. Wszystko spięte z backendem i Discord OAuth2, bez kopiowania tokenów.
             </p>
           </div>
           <div className="flex gap-3">
@@ -24,7 +24,7 @@ export default function LandingPage() {
               href="/panel/dashboard"
               className="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-accent-400/50"
             >
-              Przejdź do panelu
+              Otwórz panel
             </a>
           </div>
         </header>
@@ -32,34 +32,34 @@ export default function LandingPage() {
         <section className="grid gap-4 md:grid-cols-3">
           {[
             {
-              title: "Welcome Messages",
-              desc: "Edytor powitań z podglądem Discord i AI presetami.",
-              pill: "Live preview"
+              title: "Powitania",
+              desc: "Ustaw kanał, rolę i layout powitań dla nowych członków.",
+              pill: "GET/POST /welcome"
             },
             {
-              title: "Event Creator",
-              desc: "Planowanie wydarzeń z cyklicznością, kanałami i pingami ról.",
-              pill: "API-backed"
+              title: "Eventy / TW",
+              desc: "Twórz i loguj eventy – zapis trafia do /activity/summary.",
+              pill: "POST /events"
             },
             {
-              title: "Emoji Triggers",
-              desc: "Mapowanie emoji na GIF/IMG z szybką moderacją triggerów.",
-              pill: "Mock until endpoint"
+              title: "Emoji",
+              desc: "Pobierz emoji z gildii i przypisz reakcyjne GIF-y.",
+              pill: "GET /emojis"
             },
             {
-              title: "Moderation",
-              desc: "Toggle dla Anti-Link, Anti-Caps, Profanity i Raid Mode.",
-              pill: "Discord roles"
+              title: "Moderacja",
+              desc: "Włącz/wyłącz moduły Anti-Link, Anti-Caps, Raid Mode.",
+              pill: "GET/POST /moderation"
             },
             {
-              title: "Overview",
-              desc: "Statystyki ról, emoji i aktywności pobierane z ConqBot API.",
-              pill: "Live + mocks"
+              title: "Lista serwerów",
+              desc: "Panel pokazuje tylko gildie, w których masz admina i gdzie jest bot.",
+              pill: "GET /guilds"
             },
             {
-              title: "Theming",
-              desc: "Midnight (Tech-Ops) i Warlord (Gritty) – glassmorphism ready.",
-              pill: "Theme switch"
+              title: "Bezpieczeństwo",
+              desc: "Bearer + HTTP-only cookie, weryfikacja ról po stronie backendu.",
+              pill: "Token + CORS"
             }
           ].map((card) => (
             <div
@@ -81,10 +81,10 @@ export default function LandingPage() {
           <p className="text-xs uppercase tracking-[0.3rem] text-slate-400">Autoryzacja</p>
           <h2 className="mt-2 text-2xl font-semibold text-white">Discord OAuth2 + ConqBot</h2>
           <p className="mt-2 max-w-3xl text-slate-300">
-            Logowanie odbywa się przez Discord. Backend wystawi krótko-żyjący token oraz secure cookie,
-            a frontend dołącza Bearer token do każdego zapytania pod {""}
-            <code className="rounded bg-black/40 px-2 py-1 text-xs">https://conqbot.blcdev.com/api</code>.
-            Uprawnienia do guild są weryfikowane w backendzie – klient nie przechowuje ról ani sekretów.
+            Logowanie odbywa się przez Discord. Backend wystawia krótko-żyjący token oraz secure cookie,
+            a frontend dołącza Bearer do zapytań pod {""}
+            <code className="rounded bg-black/40 px-2 py-1 text-xs">https://conqbot.blcdev.com/api/panel</code>.
+            Uprawnienia do guild są sprawdzane na backendzie – klient nie przechowuje ról ani sekretów.
           </p>
           <div className="mt-4 flex gap-3">
             <a
