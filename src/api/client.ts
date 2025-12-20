@@ -91,6 +91,54 @@ const withDefaults = (settings?: ServerSettings | null): ServerSettings => ({
   },
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const normalizeServer = (item: Record<string, unknown>): Server | null => {
+  const idValue = item.id ?? item.guild_id ?? item.guildId;
+  const nameValue = item.name ?? item.guild_name ?? item.guildName;
+
+  if (!idValue || !nameValue) {
+    return null;
+  }
+
+  const iconValue = item.iconUrl ?? item.icon ?? item.icon_url ?? item.guild_icon;
+  const memberCountValue = item.memberCount ?? item.member_count ?? item.members;
+  const hasBotValue = item.hasBot ?? item.has_bot ?? true;
+  const roleValue = item.role ?? (item.is_owner ? "owner" : item.is_admin ? "admin" : undefined);
+
+  return {
+    id: String(idValue),
+    name: String(nameValue),
+    iconUrl: typeof iconValue === "string" ? iconValue : undefined,
+    memberCount:
+      typeof memberCountValue === "number" ? memberCountValue : undefined,
+    hasBot: typeof hasBotValue === "boolean" ? hasBotValue : true,
+    role: roleValue === "owner" || roleValue === "admin" ? roleValue : undefined,
+  };
+};
+
+const extractServers = (payload: unknown): Server[] => {
+  if (Array.isArray(payload)) {
+    return payload
+      .filter(isRecord)
+      .map(normalizeServer)
+      .filter((server): server is Server => server !== null);
+  }
+
+  if (isRecord(payload)) {
+    const nested = payload.servers ?? payload.data ?? payload.guilds;
+    if (Array.isArray(nested)) {
+      return nested
+        .filter(isRecord)
+        .map(normalizeServer)
+        .filter((server): server is Server => server !== null);
+    }
+  }
+
+  return [];
+};
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
@@ -151,7 +199,12 @@ export async function getServers(): Promise<Server[]> {
     return mockServers;
   }
 
-  return request<Server[]>("/api/servers");
+  const response = await request<unknown>("/api/servers");
+  const servers = extractServers(response);
+  if (servers.length === 0 && Array.isArray(response)) {
+    return response as Server[];
+  }
+  return servers;
 }
 
 export async function getServerSettings(id: string): Promise<ServerSettings> {
