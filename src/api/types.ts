@@ -1,32 +1,28 @@
-export type GuildServer = {
+export type User = {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+};
+
+export type Server = {
   id: string;
   name: string;
-  icon?: string | null;
-  owner?: boolean;
-  verified?: boolean;
+  iconUrl?: string;
+  memberCount?: number;
+  hasBot?: boolean;
+  role?: "owner" | "admin";
 };
 
-export type EmojiItem = {
-  id: string;
-  name: string;
-  url: string;
-  animated?: boolean;
-};
-
-export type BotEvent = {
-  id: string;
-  name: string;
-  description?: string;
-  scheduledFor?: string;
-  channel?: string;
-  createdBy?: string;
-};
-
-export type ApiError = Error & {
-  status?: number;
-};
-
-export type ApiResult<T> = {
-  data: T | null;
-  error: string | null;
+export type ServerSettings = {
+  prefix: string;
+  language: string;
+  timezone: string;
+  welcomeMessage: string;
+  logChannelId: string;
+  autoRoleId: string;
+  features: {
+    autoModeration: boolean;
+    eventReminders: boolean;
+    voicePresence: boolean;
+  };
 };

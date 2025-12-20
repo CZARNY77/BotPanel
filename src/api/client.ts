@@ -1,81 +1,202 @@
-import { ApiError, BotEvent, EmojiItem, GuildServer } from "./types";
+import type { Server, ServerSettings, User } from "./types";
 
-const API_BASE = "https://conqbot.blcdev.com";
-export const API_URL = `${API_BASE}/api/panel`;
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(
+  /\/$/,
+  ""
+) ?? "";
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
-export function buildAuthUrl() {
-  if (typeof window === "undefined") {
-    return `${API_URL}/auth/discord`;
+const defaultSettings: ServerSettings = {
+  prefix: "!",
+  language: "pl-PL",
+  timezone: "Europe/Warsaw",
+  welcomeMessage: "Witaj na serwerze! Daj nam znac, jesli potrzebujesz pomocy.",
+  logChannelId: "",
+  autoRoleId: "",
+  features: {
+    autoModeration: true,
+    eventReminders: true,
+    voicePresence: false,
+  },
+};
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
   }
-  const redirect = encodeURIComponent(`${window.location.origin}/login`);
-  return `${API_URL}/auth/discord?redirect_uri=${redirect}`;
 }
 
-function getAuthToken() {
-  if (typeof localStorage === "undefined") return null;
-  return localStorage.getItem("conqbot_token");
-}
+const mockUser: User = {
+  id: "1122334455",
+  username: "Czarny",
+  avatarUrl: "https://cdn.discordapp.com/embed/avatars/0.png",
+};
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAuthToken();
-  const response = await fetch(`${API_URL}${path}`, {
+const mockServers: Server[] = [
+  {
+    id: "9001",
+    name: "Conq Warriors",
+    iconUrl: "https://cdn.discordapp.com/embed/avatars/1.png",
+    memberCount: 148,
+    hasBot: true,
+    role: "owner",
+  },
+  {
+    id: "9002",
+    name: "Regiment West",
+    iconUrl: "https://cdn.discordapp.com/embed/avatars/2.png",
+    memberCount: 72,
+    hasBot: true,
+    role: "admin",
+  },
+  {
+    id: "9003",
+    name: "Frontline HQ",
+    iconUrl: "https://cdn.discordapp.com/embed/avatars/3.png",
+    memberCount: 210,
+    hasBot: false,
+    role: "admin",
+  },
+];
+
+let mockSettings: Record<string, ServerSettings> = {
+  "9001": {
+    ...defaultSettings,
+    prefix: "?",
+    welcomeMessage: "Witaj w Conq Warriors!",
+    features: {
+      autoModeration: true,
+      eventReminders: true,
+      voicePresence: true,
+    },
+  },
+  "9002": {
+    ...defaultSettings,
+    prefix: "!",
+    welcomeMessage: "Dolaczaj do bitew w rytmie harmonogramu.",
+  },
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withDefaults = (settings?: ServerSettings | null): ServerSettings => ({
+  ...defaultSettings,
+  ...settings,
+  features: {
+    ...defaultSettings.features,
+    ...(settings?.features ?? {}),
+  },
+});
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {})
+      ...options.headers,
     },
-    ...init
+    ...options,
   });
-
-  const isJson = response.headers.get("content-type")?.includes("application/json");
-  const payload = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    const error: ApiError = new Error(payload?.error || payload?.message || "Request failed");
-    error.status = response.status;
-    throw error;
+    const message = await response.text();
+    throw new ApiError(message || "Request failed", response.status);
   }
 
-  return payload as T;
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  return (await response.json()) as T;
 }
 
-export function getUserServers() {
-  return fetchJson<{ guilds: GuildServer[] }>("/guilds").then((res) => res.guilds ?? []);
+export async function getMe(): Promise<User | null> {
+  if (USE_MOCKS) {
+    await sleep(500);
+    return mockUser;
+  }
+
+  try {
+    return await request<User>("/api/me");
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return null;
+    }
+    throw error;
+  }
 }
 
-export function getServerVerification(serverId: string) {
-  const query = new URLSearchParams({ server_id: serverId }).toString();
-  return fetchJson<{ verified: boolean; message?: string }>(`/server_verification?${query}`);
+export async function logout(): Promise<void> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return;
+  }
+
+  try {
+    await request<void>("/auth/logout", { method: "POST" });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return;
+    }
+    throw error;
+  }
 }
 
-export function getEmojis(serverId: string) {
-  const query = new URLSearchParams({ server_id: serverId }).toString();
-  return fetchJson<{ emojis: EmojiItem[] }>(`/emojis?${query}`).then((res) => res.emojis ?? []);
+export async function getServers(): Promise<Server[]> {
+  if (USE_MOCKS) {
+    await sleep(500);
+    return mockServers;
+  }
+
+  return request<Server[]>("/api/servers");
 }
 
-export function createEvent(event: BotEvent & { serverId: string }) {
-  return fetchJson<{ status: string; event?: BotEvent }>("/events", {
-    method: "POST",
-    body: JSON.stringify(event)
+export async function getServerSettings(id: string): Promise<ServerSettings> {
+  if (USE_MOCKS) {
+    await sleep(450);
+    return withDefaults(mockSettings[id]);
+  }
+
+  return request<ServerSettings>(`/api/servers/${id}/settings`).then(withDefaults);
+}
+
+export async function updateServerSettings(
+  id: string,
+  settings: ServerSettings
+): Promise<ServerSettings> {
+  if (USE_MOCKS) {
+    await sleep(600);
+    mockSettings = {
+      ...mockSettings,
+      [id]: settings,
+    };
+    return settings;
+  }
+
+  return request<ServerSettings>(`/api/servers/${id}/settings`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
   });
 }
 
-export function changeHouseName(serverId: string, house: string) {
-  return fetchJson<{ status: string }>("/house_name", {
-    method: "POST",
-    body: JSON.stringify({ serverId, house })
-  });
+export async function getInviteUrl(serverId?: string): Promise<string> {
+  if (USE_MOCKS) {
+    await sleep(250);
+    return "https://discord.com/oauth2/authorize?client_id=123&scope=bot%20applications.commands";
+  }
+
+  if (serverId) {
+    const result = await request<{ url: string }>(
+      `/api/servers/${serverId}/invite`
+    );
+    return result.url;
+  }
+
+  const result = await request<{ url: string }>("/api/invite");
+  return result.url;
 }
 
-export function loginWithCode(code: string, redirectUri: string) {
-  return fetchJson<{
-    status: string;
-    token: { access_token: string; expires_at: number; token_type: string };
-    user: { id: string; username?: string; avatar?: string };
-    guild_ids: number[];
-  }>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ code, redirect_uri: redirectUri })
-  });
-}
+export const authUrl = `${API_BASE}/auth/discord`;
