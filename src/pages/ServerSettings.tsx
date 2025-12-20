@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getServerSettings, getServers, updateServerSettings } from "../api/client";
-import type { Server, ServerSettings } from "../api/types";
+import type { Server, ServerSettings as ServerSettingsType } from "../api/types";
 import { Button } from "../components/Button";
 import { LoadingScreen } from "../components/LoadingScreen";
 
-const emptySettings: ServerSettings = {
+const emptySettings: ServerSettingsType = {
   prefix: "!",
   language: "pl-PL",
   timezone: "Europe/Warsaw",
@@ -22,8 +22,8 @@ const emptySettings: ServerSettings = {
 export const ServerSettings = () => {
   const { id } = useParams();
   const [server, setServer] = useState<Server | null>(null);
-  const [settings, setSettings] = useState<ServerSettings>(emptySettings);
-  const [initialSettings, setInitialSettings] = useState<ServerSettings>(emptySettings);
+  const [settings, setSettings] = useState<ServerSettingsType>(emptySettings);
+  const [initialSettings, setInitialSettings] = useState<ServerSettingsType>(emptySettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +75,9 @@ export const ServerSettings = () => {
     [settings, initialSettings]
   );
 
-  const handleChange = <K extends keyof ServerSettings>(
+  const handleChange = <K extends keyof ServerSettingsType>(
     key: K,
-    value: ServerSettings[K]
+    value: ServerSettingsType[K]
   ) => {
     setSettings((prev) => ({
       ...prev,
@@ -85,7 +85,7 @@ export const ServerSettings = () => {
     }));
   };
 
-  const handleFeatureToggle = (key: keyof ServerSettings["features"]) => {
+  const handleFeatureToggle = (key: keyof ServerSettingsType["features"]) => {
     setSettings((prev) => ({
       ...prev,
       features: {
