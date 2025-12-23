@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
 
 export const NotFound = () => (
-  <div className="page center">
+  <div className="page-center">
     <h1>404</h1>
-    <p>Nie znalezlismy tej strony.</p>
+    <p className="muted">We could not find that page.</p>
     <Link to="/" className="btn btn-primary">
-      Wroc na start
+      Back to home
     </Link>
   </div>
 );

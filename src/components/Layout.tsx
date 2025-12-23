@@ -5,12 +5,14 @@ import { Button } from "./Button";
 export const Layout = () => {
   const { user, login, signOut, loading } = useAuth();
   const location = useLocation();
-  const onDashboard =
-    location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/servers");
+  const onDashboard = location.pathname.startsWith("/dashboard");
+
+  if (onDashboard) {
+    return <Outlet />;
+  }
 
   return (
-    <div className="app-shell">
-      <div className="ambient" aria-hidden="true" />
+    <div className="page-shell">
       <header className="top-nav">
         <Link to="/" className="brand">
           <span className="brand-mark">C</span>
@@ -18,26 +20,26 @@ export const Layout = () => {
         </Link>
         <nav className="nav-actions">
           {loading ? (
-            <span className="nav-status">Sprawdzamy sesje...</span>
+            <span className="nav-status">Checking session...</span>
           ) : user ? (
             <>
-              <Link to="/dashboard" className={`nav-link ${onDashboard ? "active" : ""}`}>
+              <Link to="/dashboard" className="nav-link">
                 Dashboard
               </Link>
               <Button variant="outline" onClick={signOut}>
-                Wyloguj
+                Log out
               </Button>
             </>
           ) : (
-            <Button onClick={login}>Zaloguj przez Discord</Button>
+            <Button onClick={login}>Login with Discord</Button>
           )}
         </nav>
       </header>
-      <main>
+      <main className="page-main">
         <Outlet />
       </main>
       <footer className="footer">
-        <p>ConqBot Panel · Wersja MVP · Zbudowane z mysla o prostocie.</p>
+        <p>ConqBot Panel - MVP build - Built for fast, clean control.</p>
       </footer>
     </div>
   );

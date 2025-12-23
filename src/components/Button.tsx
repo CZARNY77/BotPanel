@@ -6,6 +6,9 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
 };
 
-export const Button: React.FC<ButtonProps> = ({ variant = "primary", className, ...props }) => (
-  <button className={`btn btn-${variant} ${className ?? ""}`.trim()} {...props} />
-);
+export const Button: React.FC<ButtonProps> = ({
+  variant = "primary",
+  className,
+  type = "button",
+  ...props
+}) => <button className={`btn btn-${variant} ${className ?? ""}`.trim()} type={type} {...props} />;

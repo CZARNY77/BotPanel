@@ -4,7 +4,6 @@ import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Landing } from "./pages/Landing";
 import { NotFound } from "./pages/NotFound";
-import { ServerSettings } from "./pages/ServerSettings";
 
 export default function App() {
   return (
@@ -16,14 +15,6 @@ export default function App() {
           element={
             <RequireAuth>
               <Dashboard />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/servers/:id"
-          element={
-            <RequireAuth>
-              <ServerSettings />
             </RequireAuth>
           }
         />

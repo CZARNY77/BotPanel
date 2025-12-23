@@ -7,18 +7,18 @@ npm install
 npm run dev
 ```
 
-## Konfiguracja
+## Configuration
 
-Skopiuj `.env.example` do `.env` i ustaw adres backendu ConqBot:
+Copy `.env.example` to `.env` and set your backend address:
 
 ```bash
 cp .env.example .env
 ```
 
-- `VITE_API_BASE` - adres backendu (np. `http://localhost:4000`)
-- `VITE_USE_MOCKS` - ustaw `true`, aby uruchomic panel z lokalnymi danymi demo
+- `VITE_API_BASE` - backend URL (e.g. `http://localhost:4000`)
+- `VITE_USE_MOCKS` - set `true` to run the panel with demo data
 
-Domyslnie `.env.example` wskazuje produkcje (`https://conqbot.blcdev.com`). Do pracy lokalnej zmien `VITE_API_BASE` na `http://localhost:4000` i (opcjonalnie) ustaw `VITE_USE_MOCKS=true`.
+By default `.env.example` points to production (`https://conqbot.blcdev.com`). For local work, switch to `http://localhost:4000` and optionally set `VITE_USE_MOCKS=true`.
 
 ## Docker
 
@@ -27,11 +27,11 @@ docker build -t conqbot-panel .
 docker run -p 8080:80 conqbot-panel
 ```
 
-Mozesz nadpisac backend podczas buildu:
+Override the backend during build:
 
 ```bash
-docker build \\
-  --build-arg VITE_API_BASE=https://conqbot.blcdev.com \\
-  --build-arg VITE_USE_MOCKS=false \\
+docker build \
+  --build-arg VITE_API_BASE=https://conqbot.blcdev.com \
+  --build-arg VITE_USE_MOCKS=false \
   -t conqbot-panel .
 ```

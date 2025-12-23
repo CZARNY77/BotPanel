@@ -26,3 +26,50 @@ export type ServerSettings = {
     voicePresence: boolean;
   };
 };
+
+export type ChannelOption = {
+  id: string;
+  name: string;
+};
+
+export type RoleOption = {
+  id: string;
+  name: string;
+};
+
+export type ServerMetadata = {
+  channels: ChannelOption[];
+  roles: RoleOption[];
+};
+
+export type WelcomeSettings = {
+  enabled: boolean;
+  channelId: string;
+  type: "embed" | "text";
+  text: string;
+  embed: {
+    title: string;
+    description: string;
+    color: string;
+    showAvatar: boolean;
+  };
+};
+
+export type EventItem = {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  repeating: boolean;
+  channelId: string;
+  roleId: string;
+  durationMinutes: number;
+};
+
+export type EventInput = Omit<EventItem, "id">;
+
+export type EmojiTrigger = {
+  emoji: string;
+  imageUrl: string;
+};
