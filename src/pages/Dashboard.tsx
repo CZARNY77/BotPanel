@@ -533,8 +533,7 @@ export const Dashboard = () => {
 
   const channelLabel =
     channels.find((channel) => channel.id === welcomeSettings.channelId)?.name ??
-    welcomeSettings.channelId ||
-    "#channel";
+    (welcomeSettings.channelId || "#channel");
 
   const previewText = formatPreview(welcomeSettings.text);
   const previewEmbedTitle = formatPreview(welcomeSettings.embed.title);
