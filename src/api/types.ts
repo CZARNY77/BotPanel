@@ -73,3 +73,9 @@ export type EmojiTrigger = {
   emoji: string;
   imageUrl: string;
 };
+
+export type EmojiOption = {
+  id: string;
+  name: string;
+  url: string;
+};

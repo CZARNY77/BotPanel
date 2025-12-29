@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "./Button";
+import logo from "../assets/logo.png";
 
 export const Layout = () => {
   const { user, login, signOut, loading } = useAuth();
@@ -15,7 +16,9 @@ export const Layout = () => {
     <div className="page-shell">
       <header className="top-nav">
         <Link to="/" className="brand">
-          <span className="brand-mark">C</span>
+          <span className="brand-mark">
+            <img src={logo} alt="ConqBot logo" className="brand-logo" />
+          </span>
           <span className="brand-text">ConqBot Panel</span>
         </Link>
         <nav className="nav-actions">

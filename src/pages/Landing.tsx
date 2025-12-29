@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
+import logo from "../assets/logo.png";
 
 const features = [
   {
@@ -40,7 +41,11 @@ export const Landing = () => {
     <div className="landing">
       <section className="hero">
         <div>
-          <p className="eyebrow">ConqBot panel</p>
+          <div className="hero-brand">
+            <img src={logo} alt="ConqBot logo" />
+            <span>ConqBot</span>
+          </div>
+          <p className="eyebrow">Discord control panel</p>
           <h1>Control every Discord server with a single, clean dashboard.</h1>
           <p className="muted">
             ConqBot Panel brings automation, welcome flows, and event planning into one modern
@@ -56,7 +61,10 @@ export const Landing = () => {
         <div className="hero-card">
           <div className="hero-preview">
             <div className="preview-bar">
-              <span>ConqBot</span>
+              <span className="preview-brand">
+                <img src={logo} alt="" />
+                ConqBot
+              </span>
               <span className="pill info">Online</span>
             </div>
             <div className="preview-row">

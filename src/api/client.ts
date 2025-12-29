@@ -1,5 +1,6 @@
 import type {
   ChannelOption,
+  EmojiOption,
   EmojiTrigger,
   EventInput,
   EventItem,
@@ -153,6 +154,21 @@ let mockEmojiTriggers: Record<string, EmojiTrigger[]> = {
   ],
 };
 
+let mockEmojis: Record<string, EmojiOption[]> = {
+  "9001": [
+    {
+      id: "<:flame:123456789>",
+      name: "flame",
+      url: "https://cdn.discordapp.com/emojis/123456789.png",
+    },
+    {
+      id: "<:shield:987654321>",
+      name: "shield",
+      url: "https://cdn.discordapp.com/emojis/987654321.png",
+    },
+  ],
+};
+
 let mockWarthog: Record<string, boolean> = {
   "9001": true,
 };
@@ -255,6 +271,76 @@ const normalizeOption = (item: Record<string, unknown>): ChannelOption | null =>
     id: String(idValue),
     name: String(nameValue),
   };
+};
+
+const normalizeEmojiOption = (item: Record<string, unknown>): EmojiOption | null => {
+  const idValue = item.id ?? item.value ?? item.emoji_id ?? item.emoji;
+  const nameValue = item.name ?? item.label ?? item.emoji_name;
+  const urlValue = item.url ?? item.imageUrl ?? item.image_url;
+
+  if (!idValue || !nameValue) {
+    return null;
+  }
+
+  return {
+    id: String(idValue),
+    name: String(nameValue),
+    url: typeof urlValue === "string" ? urlValue : "",
+  };
+};
+
+const normalizeEmojiOptions = (payload: unknown): EmojiOption[] => {
+  const raw =
+    Array.isArray(payload)
+      ? payload
+      : isRecord(payload) && Array.isArray(payload.emojis)
+      ? payload.emojis
+      : [];
+
+  return raw
+    .filter(isRecord)
+    .map(normalizeEmojiOption)
+    .filter((item): item is EmojiOption => item !== null);
+};
+
+const extractUploadUrl = (payload: unknown): string | null => {
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  const candidates = [
+    payload.url,
+    payload.location,
+    payload.path,
+    payload.file,
+    payload.imageUrl,
+    payload.image_url,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+
+  if (isRecord(payload.data)) {
+    return extractUploadUrl(payload.data);
+  }
+
+  return null;
+};
+
+const withApiBase = (value: string): string => {
+  if (/^https?:\/\//.test(value)) {
+    return value;
+  }
+  const path = value.startsWith("/") ? value : `/${value}`;
+  return API_BASE ? `${API_BASE}${path}` : path;
 };
 
 const normalizeWelcome = (payload: unknown): WelcomeSettings => {
@@ -464,15 +550,18 @@ export async function logout(): Promise<void> {
 export async function getServers(): Promise<Server[]> {
   if (USE_MOCKS) {
     await sleep(500);
-    return mockServers;
+    return mockServers.filter((server) => server.hasBot !== false);
   }
 
   const response = await request<unknown>("/api/servers");
   const servers = extractServers(response);
-  if (servers.length === 0 && Array.isArray(response)) {
-    return response as Server[];
+  if (servers.length > 0) {
+    return servers.filter((server) => server.hasBot !== false);
   }
-  return servers;
+  if (Array.isArray(response)) {
+    return (response as Server[]).filter((server) => server.hasBot !== false);
+  }
+  return [];
 }
 
 export async function getServerMetadata(id: string): Promise<ServerMetadata> {
@@ -602,6 +691,23 @@ export async function deleteEvent(id: string, eventId: string): Promise<string> 
   return eventId;
 }
 
+export async function getEmojis(id: string): Promise<EmojiOption[]> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return mockEmojis[id] ?? [];
+  }
+
+  try {
+    const response = await request<unknown>(`/api/get_emojis?guild_id=${encodeURIComponent(id)}`);
+    return normalizeEmojiOptions(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return [];
+    }
+    throw error;
+  }
+}
+
 export async function getEmojiTriggers(id: string): Promise<EmojiTrigger[]> {
   if (USE_MOCKS) {
     await sleep(200);
@@ -618,6 +724,42 @@ export async function getEmojiTriggers(id: string): Promise<EmojiTrigger[]> {
     }
     throw error;
   }
+}
+
+export async function uploadImage(file: File, guildId?: string): Promise<string> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return "https://placehold.co/480x270";
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  if (guildId) {
+    formData.append("guild_id", guildId);
+  }
+
+  const response = await fetch(`${API_BASE}/api/uploads`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new ApiError(message || "Upload failed.", response.status);
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json")
+    ? ((await response.json()) as unknown)
+    : await response.text();
+
+  const url = extractUploadUrl(payload);
+  if (!url) {
+    throw new Error("Upload succeeded but no URL was returned.");
+  }
+
+  return withApiBase(url);
 }
 
 export async function updateEmojiTriggers(

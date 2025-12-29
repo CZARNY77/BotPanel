@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createEvent,
   deleteEvent,
+  getEmojis,
   getEmojiTriggers,
   getEvents,
   getInviteUrl,
@@ -9,12 +10,14 @@ import {
   getServers,
   getWelcomeSettings,
   getWarthog,
+  uploadImage,
   updateEmojiTriggers,
   updateWelcomeSettings,
   updateWarthog,
 } from "../api/client";
 import type {
   EmojiTrigger,
+  EmojiOption,
   EventInput,
   EventItem,
   Server,
@@ -24,10 +27,16 @@ import type {
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { LoadingScreen } from "../components/LoadingScreen";
+import logo from "../assets/logo.png";
 
 type SectionKey = "overview" | "welcome" | "events" | "emoji" | "other";
 
-type TriggerRow = EmojiTrigger & { id: string };
+type TriggerRow = EmojiTrigger & {
+  id: string;
+  uploadFile?: File | null;
+  previewUrl?: string;
+  uploading?: boolean;
+};
 
 type LoadedState = {
   metadata: boolean;
@@ -55,10 +64,10 @@ const fallbackChannels = [
 ];
 
 const fallbackRoles = [
-  { id: "@Raid", name: "@Raid" },
-  { id: "@Guild", name: "@Guild" },
-  { id: "@Officers", name: "@Officers" },
-  { id: "@Everyone", name: "@Everyone" },
+  { id: "Raid", name: "Raid" },
+  { id: "Guild", name: "Guild" },
+  { id: "Officers", name: "Officers" },
+  { id: "Everyone", name: "Everyone" },
 ];
 
 const emptyWelcome: WelcomeSettings = {
@@ -96,10 +105,19 @@ const emptyLoadingState: LoadingState = {
 };
 
 const maxEmojiTriggers = 10;
+const maxUploadBytes = 5 * 1024 * 1024;
 const createId = () => Math.random().toString(36).slice(2, 9);
 
-const isValidDate = (value: string) => /^(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.\d{4}$/.test(value);
+const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 const isValidTime = (value: string) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+const toPanelDate = (value: string) => {
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) {
+    return "";
+  }
+  return `${day}.${month}.${year}`;
+};
+const stripRolePrefix = (value: string) => (value.startsWith("@") ? value.slice(1) : value);
 
 export const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -125,13 +143,15 @@ export const Dashboard = () => {
     repeating: false,
     channelId: "",
     roleId: "",
-    durationMinutes: "60",
+    durationHours: "1",
   });
   const [events, setEvents] = useState<EventItem[]>([]);
   const [eventSaving, setEventSaving] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   const [emojiRows, setEmojiRows] = useState<TriggerRow[]>([]);
+  const [emojiOptions, setEmojiOptions] = useState<EmojiOption[]>([]);
+  const [emojiOptionsLoading, setEmojiOptionsLoading] = useState(false);
   const [emojiSaving, setEmojiSaving] = useState(false);
 
   const [warthogEnabled, setWarthogEnabled] = useState(true);
@@ -183,6 +203,8 @@ export const Dashboard = () => {
     setWelcomeSettings(emptyWelcome);
     setEvents([]);
     setEmojiRows([]);
+    setEmojiOptions([]);
+    setEmojiOptionsLoading(false);
     setWarthogEnabled(true);
     setError(null);
     setSuccess(null);
@@ -193,7 +215,7 @@ export const Dashboard = () => {
       date: "",
       time: "",
       repeating: false,
-      durationMinutes: "60",
+      durationHours: "1",
     }));
   }, [activeServerId]);
 
@@ -292,13 +314,35 @@ export const Dashboard = () => {
     updateSectionLoading("emoji", true);
     try {
       const data = await getEmojiTriggers(activeServerId);
-      setEmojiRows(data.map((trigger) => ({ ...trigger, id: createId() })));
+      setEmojiRows(
+        data.map((trigger) => ({
+          ...trigger,
+          id: createId(),
+          uploadFile: null,
+          previewUrl: "",
+        }))
+      );
       updateLoaded("emoji", true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load emoji triggers.");
       updateLoaded("emoji", true);
     } finally {
       updateSectionLoading("emoji", false);
+    }
+  };
+
+  const loadEmojiOptions = async () => {
+    if (!activeServerId || emojiOptionsLoading || emojiOptions.length > 0) {
+      return;
+    }
+    setEmojiOptionsLoading(true);
+    try {
+      const data = await getEmojis(activeServerId);
+      setEmojiOptions(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load emojis.");
+    } finally {
+      setEmojiOptionsLoading(false);
     }
   };
 
@@ -336,6 +380,7 @@ export const Dashboard = () => {
 
     if (activeSection === "emoji") {
       void loadEmojiTriggers();
+      void loadEmojiOptions();
     }
 
     if (activeSection === "other") {
@@ -404,7 +449,7 @@ export const Dashboard = () => {
       return;
     }
     if (!eventForm.date.trim() || !isValidDate(eventForm.date)) {
-      setError("Date must be in dd.mm.yyyy format.");
+      setError("Pick a valid date.");
       return;
     }
     if (!eventForm.time.trim() || !isValidTime(eventForm.time)) {
@@ -416,11 +461,19 @@ export const Dashboard = () => {
       return;
     }
 
-    const durationMinutes = Number.parseInt(eventForm.durationMinutes, 10);
-    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-      setError("Duration must be a positive number.");
+    const durationHours = Number.parseFloat(eventForm.durationHours);
+    if (!Number.isFinite(durationHours) || durationHours <= 0) {
+      setError("Duration must be a positive number of hours.");
       return;
     }
+
+    const formattedDate = toPanelDate(eventForm.date);
+    if (!formattedDate) {
+      setError("Pick a valid date.");
+      return;
+    }
+
+    const durationMinutes = Math.round(durationHours * 60);
 
     setEventSaving(true);
     setError(null);
@@ -429,7 +482,7 @@ export const Dashboard = () => {
       const payload: EventInput = {
         title: eventForm.title,
         description: eventForm.description,
-        date: eventForm.date,
+        date: formattedDate,
         time: eventForm.time,
         repeating: eventForm.repeating,
         channelId: eventForm.channelId,
@@ -472,8 +525,71 @@ export const Dashboard = () => {
     }
   };
 
+  const updateEmojiRow = (id: string, updater: (row: TriggerRow) => TriggerRow) => {
+    setEmojiRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== id) {
+          return row;
+        }
+        const next = updater(row);
+        if (row.previewUrl && row.previewUrl.startsWith("blob:") && row.previewUrl !== next.previewUrl) {
+          URL.revokeObjectURL(row.previewUrl);
+        }
+        return next;
+      })
+    );
+  };
+
+  const removeEmojiRow = (id: string) => {
+    setEmojiRows((prev) => {
+      const row = prev.find((item) => item.id === id);
+      if (row?.previewUrl && row.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(row.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const handleEmojiUpload = async (id: string, file: File) => {
+    if (!activeServerId) {
+      setError("Pick a server before uploading.");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    updateEmojiRow(id, (row) => ({
+      ...row,
+      uploadFile: file,
+      previewUrl,
+      uploading: true,
+    }));
+    setError(null);
+    try {
+      const url = await uploadImage(file, activeServerId);
+      updateEmojiRow(id, (row) => ({
+        ...row,
+        imageUrl: url,
+        uploadFile: null,
+        previewUrl: url,
+        uploading: false,
+      }));
+    } catch (err) {
+      updateEmojiRow(id, (row) => ({
+        ...row,
+        uploadFile: null,
+        previewUrl: row.imageUrl,
+        uploading: false,
+      }));
+      setError(err instanceof Error ? err.message : "Failed to upload image.");
+    }
+  };
+
   const handleEmojiSave = async () => {
     if (!activeServerId) {
+      return;
+    }
+
+    if (emojiRows.some((row) => row.uploading)) {
+      setError("Wait for uploads to finish before saving.");
       return;
     }
 
@@ -482,8 +598,13 @@ export const Dashboard = () => {
       return;
     }
 
-    if (emojiRows.some((row) => !row.emoji.trim() || !row.imageUrl.trim())) {
-      setError("Every emoji trigger needs an emoji and an image URL.");
+    if (emojiRows.some((row) => !row.emoji.trim())) {
+      setError("Every emoji trigger needs an emoji.");
+      return;
+    }
+
+    if (emojiRows.some((row) => !row.imageUrl.trim())) {
+      setError("Add an image URL for each trigger. Uploads are preview-only for now.");
       return;
     }
 
@@ -501,7 +622,14 @@ export const Dashboard = () => {
         imageUrl: row.imageUrl,
       }));
       const updated = await updateEmojiTriggers(activeServerId, payload);
-      setEmojiRows(updated.map((trigger) => ({ ...trigger, id: createId() })));
+      setEmojiRows(
+        updated.map((trigger) => ({
+          ...trigger,
+          id: createId(),
+          uploadFile: null,
+          previewUrl: "",
+        }))
+      );
       setSuccess("Emoji triggers saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save emoji triggers.");
@@ -547,9 +675,19 @@ export const Dashboard = () => {
     return map;
   }, [channels]);
 
+  const emojiMap = useMemo(() => {
+    const map = new Map<string, EmojiOption>();
+    emojiOptions.forEach((emoji) => {
+      map.set(emoji.id, emoji);
+    });
+    return map;
+  }, [emojiOptions]);
+
   const welcomeLoading = !loaded.welcome || sectionLoading.welcome || sectionLoading.metadata;
   const eventsLoading = !loaded.events || sectionLoading.events || sectionLoading.metadata;
-  const emojiLoading = !loaded.emoji || sectionLoading.emoji;
+  const emojiLoading =
+    !loaded.emoji || sectionLoading.emoji || (emojiOptionsLoading && emojiOptions.length === 0);
+  const emojiUploadInProgress = emojiRows.some((row) => row.uploading);
   const warthogLoading = !loaded.warthog || sectionLoading.warthog;
 
   if (loading) {
@@ -559,6 +697,10 @@ export const Dashboard = () => {
   return (
     <div className="dashboard-shell">
       <aside className="server-rail">
+        <div className="server-brand" title="ConqBot Home">
+          <img src={logo} alt="ConqBot logo" />
+        </div>
+        <div className="server-divider" />
         <div className="server-list">
           {servers.map((server) => (
             <button
@@ -589,9 +731,20 @@ export const Dashboard = () => {
       <aside className="side-nav">
         <div className="side-header">
           <p className="eyebrow">Selected server</p>
-          <h2>{activeServer?.name ?? "No server"}</h2>
+          <div className="server-identity">
+            <div className="server-icon">
+              {activeServer?.iconUrl ? (
+                <img src={activeServer.iconUrl} alt={activeServer.name} />
+              ) : (
+                <span>{activeServer?.name?.slice(0, 1) ?? "S"}</span>
+              )}
+            </div>
+            <h2 className="server-name">{activeServer?.name ?? "No server"}</h2>
+          </div>
           <span className="meta">ID: {activeServer?.id ?? "-"}</span>
         </div>
+
+        <div className="side-divider" />
 
         <nav className="side-menu">
           {sections.map((section) => (
@@ -605,6 +758,8 @@ export const Dashboard = () => {
             </button>
           ))}
         </nav>
+
+        <div className="side-divider" />
 
         <a
           className="side-link"
@@ -647,9 +802,6 @@ export const Dashboard = () => {
                 <h1>{activeServer?.name ?? "Server overview"}</h1>
                 <p className="muted">Quick snapshot of the server status and bot presence.</p>
               </div>
-              <Button onClick={handleInvite} disabled={inviteLoading}>
-                {inviteLoading ? "Preparing invite..." : "Add bot to new server"}
-              </Button>
             </div>
             <div className="card-grid">
               <article className="card">
@@ -688,21 +840,24 @@ export const Dashboard = () => {
                   {welcomeSaving ? "Saving..." : "Save changes"}
                 </Button>
               </div>
-              <div className="content-grid">
+              <div className="content-grid content-grid--wide-preview">
                 <div className="card">
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={welcomeSettings.enabled}
-                      onChange={() =>
-                        setWelcomeSettings((prev) => ({
-                          ...prev,
-                          enabled: !prev.enabled,
-                        }))
-                      }
-                    />
-                    <span>Enable welcome message</span>
-                  </label>
+                  <div className="switch-row">
+                    <label className="switch-control">
+                      <input
+                        type="checkbox"
+                        checked={welcomeSettings.enabled}
+                        onChange={() =>
+                          setWelcomeSettings((prev) => ({
+                            ...prev,
+                            enabled: !prev.enabled,
+                          }))
+                        }
+                        aria-label="Enable welcome message"
+                      />
+                    </label>
+                    <span className="switch-label">Enable welcome message</span>
+                  </div>
                   <div className="form-grid">
                     <label>
                       Channel
@@ -772,38 +927,45 @@ export const Dashboard = () => {
                           }
                         />
                       </label>
-                      <label>
-                        Accent color
-                        <input
-                          type="color"
-                          value={welcomeSettings.embed.color}
-                          onChange={(event) =>
-                            setWelcomeSettings((prev) => ({
-                              ...prev,
-                              embed: {
-                                ...prev.embed,
-                                color: event.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-                      <label className="switch">
-                        <input
-                          type="checkbox"
-                          checked={welcomeSettings.embed.showAvatar}
-                          onChange={() =>
-                            setWelcomeSettings((prev) => ({
-                              ...prev,
-                              embed: {
-                                ...prev.embed,
-                                showAvatar: !prev.embed.showAvatar,
-                              },
-                            }))
-                          }
-                        />
-                        <span>Show user avatar</span>
-                      </label>
+                      <div className="field">
+                        <span>Accent color</span>
+                        <div className="color-input">
+                          <input
+                            type="color"
+                            value={welcomeSettings.embed.color}
+                            onChange={(event) =>
+                              setWelcomeSettings((prev) => ({
+                                ...prev,
+                                embed: {
+                                  ...prev.embed,
+                                  color: event.target.value,
+                                },
+                              }))
+                            }
+                            aria-label="Embed accent color"
+                          />
+                          <span className="color-value">{welcomeSettings.embed.color}</span>
+                        </div>
+                      </div>
+                      <div className="switch-row">
+                        <label className="switch-control">
+                          <input
+                            type="checkbox"
+                            checked={welcomeSettings.embed.showAvatar}
+                            onChange={() =>
+                              setWelcomeSettings((prev) => ({
+                                ...prev,
+                                embed: {
+                                  ...prev.embed,
+                                  showAvatar: !prev.embed.showAvatar,
+                                },
+                              }))
+                            }
+                            aria-label="Show user avatar"
+                          />
+                        </label>
+                        <span className="switch-label">Show user avatar</span>
+                      </div>
                     </div>
                   ) : (
                     <div className="form-grid">
@@ -829,7 +991,7 @@ export const Dashboard = () => {
                   <p className="muted">Preview</p>
                   <div className="discord-message">
                     <div className="discord-avatar">
-                      <span>C</span>
+                      <img src={logo} alt="ConqBot" />
                     </div>
                     <div className="discord-body">
                       <div className="discord-header">
@@ -853,7 +1015,11 @@ export const Dashboard = () => {
                           </div>
                           {welcomeSettings.embed.showAvatar ? (
                             <div className="discord-embed-avatar">
-                              {user?.username?.slice(0, 1) ?? "U"}
+                              {user?.avatarUrl ? (
+                                <img src={user.avatarUrl} alt={user.username ?? "User"} />
+                              ) : (
+                                <span>{user?.username?.slice(0, 1) ?? "U"}</span>
+                              )}
                             </div>
                           ) : null}
                         </div>
@@ -906,36 +1072,39 @@ export const Dashboard = () => {
                     </label>
                     <div className="form-grid split">
                       <label>
-                        Date (dd.mm.yyyy)
+                        Date
                         <input
+                          type="date"
                           value={eventForm.date}
                           onChange={(event) =>
                             setEventForm((prev) => ({ ...prev, date: event.target.value }))
                           }
-                          placeholder="18.10.2025"
                         />
                       </label>
                       <label>
                         Time
                         <input
+                          type="time"
                           value={eventForm.time}
                           onChange={(event) =>
                             setEventForm((prev) => ({ ...prev, time: event.target.value }))
                           }
-                          placeholder="19:00"
                         />
                       </label>
                     </div>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={eventForm.repeating}
-                        onChange={() =>
-                          setEventForm((prev) => ({ ...prev, repeating: !prev.repeating }))
-                        }
-                      />
-                      <span>Repeating event</span>
-                    </label>
+                    <div className="switch-row">
+                      <label className="switch-control">
+                        <input
+                          type="checkbox"
+                          checked={eventForm.repeating}
+                          onChange={() =>
+                            setEventForm((prev) => ({ ...prev, repeating: !prev.repeating }))
+                          }
+                          aria-label="Repeating event"
+                        />
+                      </label>
+                      <span className="switch-label">Repeating event</span>
+                    </div>
                     <div className="form-grid split">
                       <label>
                         Channel
@@ -962,18 +1131,21 @@ export const Dashboard = () => {
                         >
                           {roles.map((role) => (
                             <option key={role.id} value={role.id}>
-                              {role.name}
+                              {stripRolePrefix(role.name)}
                             </option>
                           ))}
                         </select>
                       </label>
                     </div>
                     <label>
-                      Duration (minutes)
+                      Duration (hours)
                       <input
-                        value={eventForm.durationMinutes}
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        value={eventForm.durationHours}
                         onChange={(event) =>
-                          setEventForm((prev) => ({ ...prev, durationMinutes: event.target.value }))
+                          setEventForm((prev) => ({ ...prev, durationHours: event.target.value }))
                         }
                       />
                     </label>
@@ -1031,8 +1203,12 @@ export const Dashboard = () => {
                   <p className="muted">Attach up to 10 emoji triggers with an image response.</p>
                 </div>
                 <div className="section-actions">
-                  <Button variant="outline" onClick={handleEmojiSave} disabled={emojiSaving}>
-                    {emojiSaving ? "Saving..." : "Save triggers"}
+                  <Button
+                    variant="outline"
+                    onClick={handleEmojiSave}
+                    disabled={emojiSaving || emojiUploadInProgress}
+                  >
+                    {emojiSaving ? "Saving..." : emojiUploadInProgress ? "Uploading..." : "Save triggers"}
                   </Button>
                   <Button
                     variant="ghost"
@@ -1040,7 +1216,16 @@ export const Dashboard = () => {
                       setEmojiRows((prev) =>
                         prev.length >= maxEmojiTriggers
                           ? prev
-                          : [...prev, { id: createId(), emoji: "", imageUrl: "" }]
+                          : [
+                              ...prev,
+                              {
+                                id: createId(),
+                                emoji: "",
+                                imageUrl: "",
+                                uploadFile: null,
+                                previewUrl: "",
+                              },
+                            ]
                       )
                     }
                     disabled={emojiRows.length >= maxEmojiTriggers}
@@ -1051,44 +1236,100 @@ export const Dashboard = () => {
               </div>
               <div className="card">
                 <div className="trigger-list">
-                  {emojiRows.map((trigger) => (
-                    <div key={trigger.id} className="trigger-row">
-                      <input
-                        className="emoji-input"
-                        value={trigger.emoji}
-                        onChange={(event) =>
-                          setEmojiRows((prev) =>
-                            prev.map((item) =>
-                              item.id === trigger.id ? { ...item, emoji: event.target.value } : item
-                            )
-                          )
-                        }
-                        placeholder=":fire:"
-                      />
-                      <input
-                        value={trigger.imageUrl}
-                        onChange={(event) =>
-                          setEmojiRows((prev) =>
-                            prev.map((item) =>
-                              item.id === trigger.id
-                                ? { ...item, imageUrl: event.target.value }
-                                : item
-                            )
-                          )
-                        }
-                        placeholder="Image URL"
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() =>
-                          setEmojiRows((prev) => prev.filter((item) => item.id !== trigger.id))
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                  {emojiRows.map((trigger) => {
+                    const emojiOption = emojiMap.get(trigger.emoji);
+                    const previewSource = trigger.uploadFile ? trigger.previewUrl : trigger.imageUrl;
+                    return (
+                      <div key={trigger.id} className="trigger-row">
+                        <div className="trigger-emoji">
+                          <select
+                            value={trigger.emoji}
+                            onChange={(event) =>
+                              updateEmojiRow(trigger.id, (row) => ({
+                                ...row,
+                                emoji: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">Select emoji</option>
+                            {emojiOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.name}
+                              </option>
+                            ))}
+                            {trigger.emoji && !emojiMap.has(trigger.emoji) ? (
+                              <option value={trigger.emoji}>Custom: {trigger.emoji}</option>
+                            ) : null}
+                          </select>
+                          {emojiOption?.url ? (
+                            <img
+                              className="emoji-preview"
+                              src={emojiOption.url}
+                              alt={emojiOption.name}
+                            />
+                          ) : (
+                            <span className="muted">No preview</span>
+                          )}
+                        </div>
+                        <div className="trigger-media">
+                          <input
+                            type="url"
+                            value={trigger.imageUrl}
+                            onChange={(event) =>
+                              updateEmojiRow(trigger.id, (row) => ({
+                                ...row,
+                                imageUrl: event.target.value,
+                                uploadFile: null,
+                                previewUrl: "",
+                              }))
+                            }
+                            placeholder="Image URL"
+                          />
+                          <div className="trigger-upload">
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/gif"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0] ?? null;
+                                if (!file) {
+                                  updateEmojiRow(trigger.id, (row) => ({
+                                    ...row,
+                                    uploadFile: null,
+                                    previewUrl: "",
+                                    uploading: false,
+                                  }));
+                                  return;
+                                }
+                                if (file.size > maxUploadBytes) {
+                                  setError("Uploads must be 5MB or smaller.");
+                                  event.currentTarget.value = "";
+                                  return;
+                                }
+                                void handleEmojiUpload(trigger.id, file);
+                              }}
+                            />
+                            <span className="muted">
+                              {trigger.uploading ? "Uploading image..." : "Upload preview (max 5MB)."}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="trigger-preview">
+                          {previewSource ? (
+                            <img src={previewSource} alt="Trigger preview" />
+                          ) : (
+                            <span className="muted">No image</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => removeEmojiRow(trigger.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="muted">Limit: {emojiRows.length}/{maxEmojiTriggers} triggers.</p>
               </div>
@@ -1109,15 +1350,20 @@ export const Dashboard = () => {
                 </div>
               </div>
               <div className="card">
-                <label className="switch">
-                  <input
-                    type="checkbox"
-                    checked={warthogEnabled}
-                    onChange={handleWarthogToggle}
-                    disabled={warthogSaving}
-                  />
-                  <span>{warthogSaving ? "Updating..." : "Enable Warthog mode"}</span>
-                </label>
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={warthogEnabled}
+                      onChange={handleWarthogToggle}
+                      disabled={warthogSaving}
+                      aria-label="Enable Warthog mode"
+                    />
+                  </label>
+                  <span className="switch-label">
+                    {warthogSaving ? "Updating..." : "Enable Warthog mode"}
+                  </span>
+                </div>
               </div>
             </section>
           )
