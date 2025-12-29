@@ -5,6 +5,7 @@ node_modules/
 
 # build output
 dist/
+public/build/
 
 # TypeScript build artifacts
 *.tsbuildinfo
@@ -22,4 +23,3 @@ pnpm-debug.log*
 
 # OS files
 .DS_Store
-public/
