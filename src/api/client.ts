@@ -4,6 +4,8 @@ import type {
   EmojiTrigger,
   EventInput,
   EventItem,
+  FarewellSettings,
+  AutoRoleSettings,
   Server,
   ServerMetadata,
   ServerSettings,
@@ -42,6 +44,24 @@ const defaultWelcome: WelcomeSettings = {
     color: "#2f7cff",
     showAvatar: true,
   },
+};
+
+const defaultFarewell: FarewellSettings = {
+  enabled: false,
+  channelId: "",
+  type: "embed",
+  text: "Goodbye {user}. Thanks for being with {server}.",
+  embed: {
+    title: "Farewell!",
+    description: "{user} just left {server}.",
+    color: "#2f7cff",
+    showAvatar: true,
+  },
+};
+
+const defaultAutorole: AutoRoleSettings = {
+  enabled: false,
+  roleId: "",
 };
 
 const defaultMetadata: ServerMetadata = {
@@ -131,6 +151,13 @@ let mockWelcome: Record<string, WelcomeSettings> = {
   },
 };
 
+let mockFarewell: Record<string, FarewellSettings> = {
+  "9001": {
+    ...defaultFarewell,
+    channelId: "111",
+  },
+};
+
 let mockEvents: Record<string, EventItem[]> = {
   "9001": [
     {
@@ -173,6 +200,13 @@ let mockWarthog: Record<string, boolean> = {
   "9001": true,
 };
 
+let mockAutorole: Record<string, AutoRoleSettings> = {
+  "9001": {
+    enabled: true,
+    roleId: "555",
+  },
+};
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const withDefaults = (settings?: ServerSettings | null): ServerSettings => ({
@@ -191,6 +225,20 @@ const withWelcomeDefaults = (settings?: Partial<WelcomeSettings> | null): Welcom
     ...defaultWelcome.embed,
     ...(settings?.embed ?? {}),
   },
+});
+
+const withFarewellDefaults = (settings?: Partial<FarewellSettings> | null): FarewellSettings => ({
+  ...defaultFarewell,
+  ...settings,
+  embed: {
+    ...defaultFarewell.embed,
+    ...(settings?.embed ?? {}),
+  },
+});
+
+const withAutoroleDefaults = (settings?: Partial<AutoRoleSettings> | null): AutoRoleSettings => ({
+  ...defaultAutorole,
+  ...settings,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -371,6 +419,57 @@ const normalizeWelcome = (payload: unknown): WelcomeSettings => {
   });
 };
 
+const normalizeFarewell = (payload: unknown): FarewellSettings => {
+  const raw = isRecord(payload)
+    ? (payload.farewell as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return withFarewellDefaults();
+  }
+
+  const embedRaw = isRecord(raw.embed) ? raw.embed : {};
+  const typeValue = raw.type ?? raw.message_type;
+
+  return withFarewellDefaults({
+    enabled: asBoolean(raw.enabled ?? raw.is_enabled ?? raw.active, defaultFarewell.enabled),
+    channelId: asString(raw.channelId ?? raw.channel_id ?? raw.channel, defaultFarewell.channelId),
+    type: typeValue === "text" ? "text" : "embed",
+    text: asString(raw.text ?? raw.message, defaultFarewell.text),
+    embed: {
+      title: asString(embedRaw.title ?? embedRaw.header, defaultFarewell.embed.title),
+      description: asString(
+        embedRaw.description ?? embedRaw.body,
+        defaultFarewell.embed.description
+      ),
+      color: asString(embedRaw.color, defaultFarewell.embed.color),
+      showAvatar: asBoolean(
+        embedRaw.showAvatar ?? embedRaw.show_avatar,
+        defaultFarewell.embed.showAvatar
+      ),
+    },
+  });
+};
+
+const normalizeAutorole = (payload: unknown): AutoRoleSettings => {
+  const raw = isRecord(payload)
+    ? (payload.autorole as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return withAutoroleDefaults();
+  }
+
+  return withAutoroleDefaults({
+    enabled: asBoolean(raw.enabled ?? raw.is_enabled ?? raw.active, defaultAutorole.enabled),
+    roleId: asString(raw.roleId ?? raw.role_id ?? raw.role, defaultAutorole.roleId),
+  });
+};
+
 const normalizeEvents = (payload: unknown): EventItem[] => {
   const raw = isRecord(payload)
     ? (payload.events as unknown[] | undefined) ??
@@ -401,6 +500,7 @@ const normalizeEvents = (payload: unknown): EventItem[] => {
         channelId: asString(item.channelId ?? item.channel_id ?? item.channel),
         roleId: asString(item.roleId ?? item.role_id ?? item.role),
         durationMinutes: asNumber(item.durationMinutes ?? item.duration_minutes ?? item.duration),
+        messageId: asString(item.messageId ?? item.message_id ?? item.message),
       } as EventItem;
     })
     .filter((event): event is EventItem => event !== null);
@@ -620,6 +720,45 @@ export async function updateWelcomeSettings(
   return normalizeWelcome(raw);
 }
 
+export async function getFarewellSettings(id: string): Promise<FarewellSettings> {
+  if (USE_MOCKS) {
+    await sleep(300);
+    return withFarewellDefaults(mockFarewell[id]);
+  }
+
+  try {
+    const response = await request<unknown>(`/api/servers/${id}/farewell`);
+    const raw = isRecord(response) && isRecord(response.farewell) ? response.farewell : response;
+    return normalizeFarewell(raw);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return withFarewellDefaults();
+    }
+    throw error;
+  }
+}
+
+export async function updateFarewellSettings(
+  id: string,
+  settings: FarewellSettings
+): Promise<FarewellSettings> {
+  if (USE_MOCKS) {
+    await sleep(400);
+    mockFarewell = {
+      ...mockFarewell,
+      [id]: settings,
+    };
+    return withFarewellDefaults(settings);
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/farewell`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
+  const raw = isRecord(response) && isRecord(response.farewell) ? response.farewell : response;
+  return normalizeFarewell(raw);
+}
+
 export async function getEvents(id: string): Promise<EventItem[]> {
   if (USE_MOCKS) {
     await sleep(300);
@@ -654,6 +793,40 @@ export async function createEvent(
 
   const response = await request<unknown>(`/api/servers/${id}/events`, {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  const normalized =
+    isRecord(response) && isRecord(response.event)
+      ? normalizeEvents([response.event])[0]
+      : normalizeEvents(response)[0];
+
+  if (!normalized) {
+    throw new Error("Invalid event response.");
+  }
+
+  return normalized;
+}
+
+export async function updateEvent(
+  id: string,
+  eventId: string,
+  payload: EventInput
+): Promise<EventItem> {
+  if (USE_MOCKS) {
+    await sleep(350);
+    const updated = { id: eventId, ...payload };
+    mockEvents = {
+      ...mockEvents,
+      [id]: (mockEvents[id] ?? []).map((eventItem) =>
+        eventItem.id === eventId ? updated : eventItem
+      ),
+    };
+    return updated;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/events/${eventId}`, {
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
 
@@ -823,6 +996,45 @@ export async function updateWarthog(id: string, enabled: boolean): Promise<boole
   }
 
   return enabled;
+}
+
+export async function getAutorole(id: string): Promise<AutoRoleSettings> {
+  if (USE_MOCKS) {
+    await sleep(250);
+    return withAutoroleDefaults(mockAutorole[id]);
+  }
+
+  try {
+    const response = await request<unknown>(`/api/servers/${id}/autorole`);
+    const raw = isRecord(response) && isRecord(response.autorole) ? response.autorole : response;
+    return normalizeAutorole(raw);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return withAutoroleDefaults();
+    }
+    throw error;
+  }
+}
+
+export async function updateAutorole(
+  id: string,
+  settings: AutoRoleSettings
+): Promise<AutoRoleSettings> {
+  if (USE_MOCKS) {
+    await sleep(300);
+    mockAutorole = {
+      ...mockAutorole,
+      [id]: settings,
+    };
+    return withAutoroleDefaults(settings);
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/autorole`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
+  const raw = isRecord(response) && isRecord(response.autorole) ? response.autorole : response;
+  return normalizeAutorole(raw);
 }
 
 export async function getServerSettings(id: string): Promise<ServerSettings> {

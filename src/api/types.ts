@@ -55,6 +55,13 @@ export type WelcomeSettings = {
   };
 };
 
+export type FarewellSettings = WelcomeSettings;
+
+export type AutoRoleSettings = {
+  enabled: boolean;
+  roleId: string;
+};
+
 export type EventItem = {
   id: string;
   title: string;
@@ -65,9 +72,19 @@ export type EventItem = {
   channelId: string;
   roleId: string;
   durationMinutes: number;
+  messageId?: string;
 };
 
-export type EventInput = Omit<EventItem, "id">;
+export type EventInput = {
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  repeating: boolean;
+  channelId: string;
+  roleId: string;
+  durationMinutes: number;
+};
 
 export type EmojiTrigger = {
   emoji: string;

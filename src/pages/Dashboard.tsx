@@ -5,13 +5,18 @@ import {
   getEmojis,
   getEmojiTriggers,
   getEvents,
+  getFarewellSettings,
   getInviteUrl,
   getServerMetadata,
   getServers,
+  getAutorole,
   getWelcomeSettings,
   getWarthog,
   uploadImage,
+  updateAutorole,
   updateEmojiTriggers,
+  updateEvent,
+  updateFarewellSettings,
   updateWelcomeSettings,
   updateWarthog,
 } from "../api/client";
@@ -20,6 +25,8 @@ import type {
   EmojiOption,
   EventInput,
   EventItem,
+  FarewellSettings,
+  AutoRoleSettings,
   Server,
   ServerMetadata,
   WelcomeSettings,
@@ -29,7 +36,7 @@ import { Button } from "../components/Button";
 import { LoadingScreen } from "../components/LoadingScreen";
 import logo from "../assets/logo.png";
 
-type SectionKey = "overview" | "welcome" | "events" | "emoji" | "other";
+type SectionKey = "overview" | "welcome" | "events" | "emoji" | "autorole" | "other";
 
 type TriggerRow = EmojiTrigger & {
   id: string;
@@ -41,18 +48,21 @@ type TriggerRow = EmojiTrigger & {
 type LoadedState = {
   metadata: boolean;
   welcome: boolean;
+  farewell: boolean;
   events: boolean;
   emoji: boolean;
   warthog: boolean;
+  autorole: boolean;
 };
 
 type LoadingState = LoadedState;
 
 const sections: { key: SectionKey; label: string }[] = [
   { key: "overview", label: "Overview" },
-  { key: "welcome", label: "Welcome Messages" },
+  { key: "welcome", label: "Greetings & Farewells" },
   { key: "events", label: "Event Creator" },
   { key: "emoji", label: "Emoji Triggers" },
+  { key: "autorole", label: "Auto Role" },
   { key: "other", label: "Other" },
 ];
 
@@ -83,6 +93,24 @@ const emptyWelcome: WelcomeSettings = {
   },
 };
 
+const emptyFarewell: FarewellSettings = {
+  enabled: false,
+  channelId: "",
+  type: "embed",
+  text: "Goodbye {user}. Thanks for being with {server}.",
+  embed: {
+    title: "Farewell!",
+    description: "{user} just left {server}.",
+    color: "#2f7cff",
+    showAvatar: true,
+  },
+};
+
+const emptyAutorole: AutoRoleSettings = {
+  enabled: false,
+  roleId: "",
+};
+
 const emptyMetadata: ServerMetadata = {
   channels: [],
   roles: [],
@@ -91,17 +119,21 @@ const emptyMetadata: ServerMetadata = {
 const emptyLoadedState: LoadedState = {
   metadata: false,
   welcome: false,
+  farewell: false,
   events: false,
   emoji: false,
   warthog: false,
+  autorole: false,
 };
 
 const emptyLoadingState: LoadingState = {
   metadata: false,
   welcome: false,
+  farewell: false,
   events: false,
   emoji: false,
   warthog: false,
+  autorole: false,
 };
 
 const maxEmojiTriggers = 10;
@@ -117,7 +149,19 @@ const toPanelDate = (value: string) => {
   }
   return `${day}.${month}.${year}`;
 };
+const fromPanelDate = (value: string) => {
+  const [day, month, year] = value.split(".");
+  if (!day || !month || !year) {
+    return "";
+  }
+  return `${year}-${month}-${day}`;
+};
 const stripRolePrefix = (value: string) => (value.startsWith("@") ? value.slice(1) : value);
+
+const extractImageUrl = (value: string) => {
+  const match = value.match(/https?:\/\/\S+\.(?:png|jpe?g|gif|webp)(?:\?\S+)?/i);
+  return match ? match[0] : "";
+};
 
 export const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -134,6 +178,8 @@ export const Dashboard = () => {
   const [metadata, setMetadata] = useState<ServerMetadata>(emptyMetadata);
   const [welcomeSettings, setWelcomeSettings] = useState<WelcomeSettings>(emptyWelcome);
   const [welcomeSaving, setWelcomeSaving] = useState(false);
+  const [farewellSettings, setFarewellSettings] = useState<FarewellSettings>(emptyFarewell);
+  const [farewellSaving, setFarewellSaving] = useState(false);
 
   const [eventForm, setEventForm] = useState({
     title: "",
@@ -147,15 +193,20 @@ export const Dashboard = () => {
   });
   const [events, setEvents] = useState<EventItem[]>([]);
   const [eventSaving, setEventSaving] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
   const [emojiRows, setEmojiRows] = useState<TriggerRow[]>([]);
   const [emojiOptions, setEmojiOptions] = useState<EmojiOption[]>([]);
   const [emojiOptionsLoading, setEmojiOptionsLoading] = useState(false);
   const [emojiSaving, setEmojiSaving] = useState(false);
+  const [activeEmojiPickerId, setActiveEmojiPickerId] = useState<string | null>(null);
 
   const [warthogEnabled, setWarthogEnabled] = useState(true);
   const [warthogSaving, setWarthogSaving] = useState(false);
+
+  const [autoroleSettings, setAutoroleSettings] = useState<AutoRoleSettings>(emptyAutorole);
+  const [autoroleSaving, setAutoroleSaving] = useState(false);
 
   const updateLoaded = (key: keyof LoadedState, value: boolean) => {
     setLoaded((prev) => ({ ...prev, [key]: value }));
@@ -201,13 +252,17 @@ export const Dashboard = () => {
     setSectionLoading(emptyLoadingState);
     setMetadata(emptyMetadata);
     setWelcomeSettings(emptyWelcome);
+    setFarewellSettings(emptyFarewell);
     setEvents([]);
     setEmojiRows([]);
     setEmojiOptions([]);
     setEmojiOptionsLoading(false);
     setWarthogEnabled(true);
+    setAutoroleSettings(emptyAutorole);
+    setActiveEmojiPickerId(null);
     setError(null);
     setSuccess(null);
+    setEditingEventId(null);
     setEventForm((prev) => ({
       ...prev,
       title: "",
@@ -215,6 +270,8 @@ export const Dashboard = () => {
       date: "",
       time: "",
       repeating: false,
+      channelId: "",
+      roleId: "",
       durationHours: "1",
     }));
   }, [activeServerId]);
@@ -223,6 +280,19 @@ export const Dashboard = () => {
     setError(null);
     setSuccess(null);
   }, [activeSection]);
+
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest(".emoji-select")) {
+        setActiveEmojiPickerId(null);
+      }
+    };
+    document.addEventListener("click", handleClick);
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, []);
 
   const activeServer = useMemo(
     () => servers.find((server) => server.id === activeServerId) ?? null,
@@ -242,6 +312,15 @@ export const Dashboard = () => {
   }, [channels, welcomeSettings.channelId]);
 
   useEffect(() => {
+    if (!farewellSettings.channelId && channels.length) {
+      setFarewellSettings((prev) => ({
+        ...prev,
+        channelId: channels[0].id,
+      }));
+    }
+  }, [channels, farewellSettings.channelId]);
+
+  useEffect(() => {
     setEventForm((prev) => {
       const nextChannel = prev.channelId || channels[0]?.id || "";
       const nextRole = prev.roleId || roles[0]?.id || "";
@@ -255,6 +334,15 @@ export const Dashboard = () => {
       };
     });
   }, [channels, roles]);
+
+  useEffect(() => {
+    if (!autoroleSettings.roleId && roles.length) {
+      setAutoroleSettings((prev) => ({
+        ...prev,
+        roleId: roles[0].id,
+      }));
+    }
+  }, [roles, autoroleSettings.roleId]);
 
   const loadMetadata = async () => {
     if (!activeServerId || loaded.metadata || sectionLoading.metadata) {
@@ -287,6 +375,23 @@ export const Dashboard = () => {
       updateLoaded("welcome", true);
     } finally {
       updateSectionLoading("welcome", false);
+    }
+  };
+
+  const loadFarewell = async () => {
+    if (!activeServerId || loaded.farewell || sectionLoading.farewell) {
+      return;
+    }
+    updateSectionLoading("farewell", true);
+    try {
+      const data = await getFarewellSettings(activeServerId);
+      setFarewellSettings(data);
+      updateLoaded("farewell", true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load farewell settings.");
+      updateLoaded("farewell", true);
+    } finally {
+      updateSectionLoading("farewell", false);
     }
   };
 
@@ -363,6 +468,23 @@ export const Dashboard = () => {
     }
   };
 
+  const loadAutorole = async () => {
+    if (!activeServerId || loaded.autorole || sectionLoading.autorole) {
+      return;
+    }
+    updateSectionLoading("autorole", true);
+    try {
+      const data = await getAutorole(activeServerId);
+      setAutoroleSettings(data);
+      updateLoaded("autorole", true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load auto role settings.");
+      updateLoaded("autorole", true);
+    } finally {
+      updateSectionLoading("autorole", false);
+    }
+  };
+
   useEffect(() => {
     if (!activeServerId) {
       return;
@@ -371,6 +493,7 @@ export const Dashboard = () => {
     if (activeSection === "welcome") {
       void loadMetadata();
       void loadWelcome();
+      void loadFarewell();
     }
 
     if (activeSection === "events") {
@@ -385,6 +508,11 @@ export const Dashboard = () => {
 
     if (activeSection === "other") {
       void loadWarthog();
+    }
+
+    if (activeSection === "autorole") {
+      void loadMetadata();
+      void loadAutorole();
     }
   }, [activeSection, activeServerId]);
 
@@ -409,21 +537,23 @@ export const Dashboard = () => {
     if (!activeServerId) {
       return;
     }
-    if (welcomeSettings.type === "text" && !welcomeSettings.text.trim()) {
-      setError("Welcome text cannot be empty.");
-      return;
-    }
-    if (
-      welcomeSettings.type === "embed" &&
-      !welcomeSettings.embed.title.trim() &&
-      !welcomeSettings.embed.description.trim()
-    ) {
-      setError("Provide at least a title or description for the embed.");
-      return;
-    }
-    if (!welcomeSettings.channelId) {
-      setError("Pick a channel for the welcome message.");
-      return;
+    if (welcomeSettings.enabled) {
+      if (welcomeSettings.type === "text" && !welcomeSettings.text.trim()) {
+        setError("Welcome text cannot be empty.");
+        return;
+      }
+      if (
+        welcomeSettings.type === "embed" &&
+        !welcomeSettings.embed.title.trim() &&
+        !welcomeSettings.embed.description.trim()
+      ) {
+        setError("Provide at least a title or description for the embed.");
+        return;
+      }
+      if (!welcomeSettings.channelId) {
+        setError("Pick a channel for the welcome message.");
+        return;
+      }
     }
 
     setWelcomeSaving(true);
@@ -437,6 +567,43 @@ export const Dashboard = () => {
       setError(err instanceof Error ? err.message : "Failed to save welcome settings.");
     } finally {
       setWelcomeSaving(false);
+    }
+  };
+
+  const handleFarewellSave = async () => {
+    if (!activeServerId) {
+      return;
+    }
+    if (farewellSettings.enabled) {
+      if (farewellSettings.type === "text" && !farewellSettings.text.trim()) {
+        setError("Farewell text cannot be empty.");
+        return;
+      }
+      if (
+        farewellSettings.type === "embed" &&
+        !farewellSettings.embed.title.trim() &&
+        !farewellSettings.embed.description.trim()
+      ) {
+        setError("Provide at least a title or description for the farewell embed.");
+        return;
+      }
+      if (!farewellSettings.channelId) {
+        setError("Pick a channel for the farewell message.");
+        return;
+      }
+    }
+
+    setFarewellSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const saved = await updateFarewellSettings(activeServerId, farewellSettings);
+      setFarewellSettings(saved);
+      setSuccess("Farewell settings saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save farewell settings.");
+    } finally {
+      setFarewellSaving(false);
     }
   };
 
@@ -489,8 +656,18 @@ export const Dashboard = () => {
         roleId: eventForm.roleId,
         durationMinutes,
       };
-      const created = await createEvent(activeServerId, payload);
-      setEvents((prev) => [created, ...prev]);
+      if (editingEventId) {
+        const updated = await updateEvent(activeServerId, editingEventId, payload);
+        setEvents((prev) =>
+          prev.map((eventItem) => (eventItem.id === updated.id ? updated : eventItem))
+        );
+        setEditingEventId(null);
+        setSuccess("Event updated.");
+      } else {
+        const created = await createEvent(activeServerId, payload);
+        setEvents((prev) => [created, ...prev]);
+        setSuccess("Event created.");
+      }
       setEventForm((prev) => ({
         ...prev,
         title: "",
@@ -498,13 +675,42 @@ export const Dashboard = () => {
         date: "",
         time: "",
         repeating: false,
+        durationHours: "1",
       }));
-      setSuccess("Event created.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create event.");
+      setError(err instanceof Error ? err.message : "Failed to save event.");
     } finally {
       setEventSaving(false);
     }
+  };
+
+  const handleEditEvent = (eventItem: EventItem) => {
+    setEditingEventId(eventItem.id);
+    setEventForm({
+      title: eventItem.title,
+      description: eventItem.description ?? "",
+      date: fromPanelDate(eventItem.date),
+      time: eventItem.time,
+      repeating: eventItem.repeating,
+      channelId: eventItem.channelId,
+      roleId: eventItem.roleId,
+      durationHours: eventItem.durationMinutes
+        ? String(Math.max(0.5, eventItem.durationMinutes / 60))
+        : "1",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEventId(null);
+    setEventForm((prev) => ({
+      ...prev,
+      title: "",
+      description: "",
+      date: "",
+      time: "",
+      repeating: false,
+      durationHours: "1",
+    }));
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -517,6 +723,9 @@ export const Dashboard = () => {
     try {
       const deletedId = await deleteEvent(activeServerId, eventId);
       setEvents((prev) => prev.filter((item) => item.id !== deletedId));
+      if (editingEventId === deletedId) {
+        handleCancelEdit();
+      }
       setSuccess("Event deleted.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete event.");
@@ -604,7 +813,7 @@ export const Dashboard = () => {
     }
 
     if (emojiRows.some((row) => !row.imageUrl.trim())) {
-      setError("Add an image URL for each trigger. Uploads are preview-only for now.");
+      setError("Add an image URL or upload an image for each trigger.");
       return;
     }
 
@@ -659,13 +868,49 @@ export const Dashboard = () => {
     }
   };
 
-  const channelLabel =
+  const handleAutoroleSave = async () => {
+    if (!activeServerId) {
+      return;
+    }
+    if (autoroleSettings.enabled && !autoroleSettings.roleId) {
+      setError("Choose a role to assign.");
+      return;
+    }
+
+    setAutoroleSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const saved = await updateAutorole(activeServerId, autoroleSettings);
+      setAutoroleSettings(saved);
+      setSuccess("Auto role settings saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save auto role settings.");
+    } finally {
+      setAutoroleSaving(false);
+    }
+  };
+
+  const welcomeChannelLabel =
     channels.find((channel) => channel.id === welcomeSettings.channelId)?.name ??
     (welcomeSettings.channelId || "#channel");
+  const farewellChannelLabel =
+    channels.find((channel) => channel.id === farewellSettings.channelId)?.name ??
+    (farewellSettings.channelId || "#channel");
 
   const previewText = formatPreview(welcomeSettings.text);
   const previewEmbedTitle = formatPreview(welcomeSettings.embed.title);
   const previewEmbedDescription = formatPreview(welcomeSettings.embed.description);
+  const previewFarewellText = formatPreview(farewellSettings.text);
+  const previewFarewellEmbedTitle = formatPreview(farewellSettings.embed.title);
+  const previewFarewellEmbedDescription = formatPreview(farewellSettings.embed.description);
+
+  const welcomeImagePreview = extractImageUrl(
+    welcomeSettings.type === "text" ? welcomeSettings.text : welcomeSettings.embed.description
+  );
+  const farewellImagePreview = extractImageUrl(
+    farewellSettings.type === "text" ? farewellSettings.text : farewellSettings.embed.description
+  );
 
   const channelNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -683,12 +928,19 @@ export const Dashboard = () => {
     return map;
   }, [emojiOptions]);
 
-  const welcomeLoading = !loaded.welcome || sectionLoading.welcome || sectionLoading.metadata;
+  const welcomeLoading =
+    !loaded.welcome ||
+    !loaded.farewell ||
+    sectionLoading.welcome ||
+    sectionLoading.farewell ||
+    sectionLoading.metadata;
   const eventsLoading = !loaded.events || sectionLoading.events || sectionLoading.metadata;
   const emojiLoading =
     !loaded.emoji || sectionLoading.emoji || (emojiOptionsLoading && emojiOptions.length === 0);
   const emojiUploadInProgress = emojiRows.some((row) => row.uploading);
   const warthogLoading = !loaded.warthog || sectionLoading.warthog;
+  const autoroleLoading =
+    !loaded.autorole || sectionLoading.autorole || sectionLoading.metadata;
 
   if (loading) {
     return <LoadingScreen label="Loading dashboard..." />;
@@ -832,201 +1084,458 @@ export const Dashboard = () => {
             <section className="content-section">
               <div className="section-header">
                 <div>
-                  <p className="eyebrow">Welcome Messages</p>
-                  <h1>Design the first impression</h1>
-                  <p className="muted">Enable and customize the welcome flow for new members.</p>
+                  <p className="eyebrow">Greetings & Farewells</p>
+                  <h1>Set the tone for arrivals and departures</h1>
+                  <p className="muted">Toggle welcome or farewell messages and tailor the content.</p>
                 </div>
-                <Button onClick={handleWelcomeSave} disabled={welcomeSaving}>
-                  {welcomeSaving ? "Saving..." : "Save changes"}
-                </Button>
               </div>
               <div className="content-grid content-grid--wide-preview">
-                <div className="card">
-                  <div className="switch-row">
-                    <label className="switch-control">
-                      <input
-                        type="checkbox"
-                        checked={welcomeSettings.enabled}
-                        onChange={() =>
-                          setWelcomeSettings((prev) => ({
-                            ...prev,
-                            enabled: !prev.enabled,
-                          }))
-                        }
-                        aria-label="Enable welcome message"
-                      />
-                    </label>
-                    <span className="switch-label">Enable welcome message</span>
-                  </div>
-                  <div className="form-grid">
-                    <label>
-                      Channel
-                      <select
-                        value={welcomeSettings.channelId}
-                        onChange={(event) =>
-                          setWelcomeSettings((prev) => ({
-                            ...prev,
-                            channelId: event.target.value,
-                          }))
-                        }
-                      >
-                        {channels.map((channel) => (
-                          <option key={channel.id} value={channel.id}>
-                            {channel.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Message type
-                      <select
-                        value={welcomeSettings.type}
-                        onChange={(event) =>
-                          setWelcomeSettings((prev) => ({
-                            ...prev,
-                            type: event.target.value as "embed" | "text",
-                          }))
-                        }
-                      >
-                        <option value="embed">Embed</option>
-                        <option value="text">Plain text</option>
-                      </select>
-                    </label>
+                <div className="card-stack">
+                  <div className="card">
+                    <div className="card-header">
+                      <div>
+                        <h3>Welcome message</h3>
+                        <p className="muted">Greet new members with an automated message.</p>
+                      </div>
+                      <Button onClick={handleWelcomeSave} disabled={welcomeSaving}>
+                        {welcomeSaving ? "Saving..." : "Save welcome"}
+                      </Button>
+                    </div>
+                    <div className="switch-row">
+                      <label className="switch-control">
+                        <input
+                          type="checkbox"
+                          checked={welcomeSettings.enabled}
+                          onChange={() =>
+                            setWelcomeSettings((prev) => ({
+                              ...prev,
+                              enabled: !prev.enabled,
+                            }))
+                          }
+                          aria-label="Enable welcome message"
+                        />
+                      </label>
+                      <span className="switch-label">Enable welcome message</span>
+                    </div>
+                    {welcomeSettings.enabled ? (
+                      <>
+                        <div className="form-grid">
+                          <label>
+                            Channel
+                            <select
+                              value={welcomeSettings.channelId}
+                              onChange={(event) =>
+                                setWelcomeSettings((prev) => ({
+                                  ...prev,
+                                  channelId: event.target.value,
+                                }))
+                              }
+                            >
+                              {channels.map((channel) => (
+                                <option key={channel.id} value={channel.id}>
+                                  {channel.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            Message type
+                            <select
+                              value={welcomeSettings.type}
+                              onChange={(event) =>
+                                setWelcomeSettings((prev) => ({
+                                  ...prev,
+                                  type: event.target.value as "embed" | "text",
+                                }))
+                              }
+                            >
+                              <option value="embed">Embed</option>
+                              <option value="text">Plain text</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        {welcomeSettings.type === "embed" ? (
+                          <div className="form-grid">
+                            <label>
+                              Embed title
+                              <input
+                                value={welcomeSettings.embed.title}
+                                onChange={(event) =>
+                                  setWelcomeSettings((prev) => ({
+                                    ...prev,
+                                    embed: {
+                                      ...prev.embed,
+                                      title: event.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </label>
+                            <label>
+                              Description
+                              <textarea
+                                rows={4}
+                                value={welcomeSettings.embed.description}
+                                onChange={(event) =>
+                                  setWelcomeSettings((prev) => ({
+                                    ...prev,
+                                    embed: {
+                                      ...prev.embed,
+                                      description: event.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </label>
+                            <div className="field">
+                              <span>Accent color</span>
+                              <div className="color-input">
+                                <input
+                                  type="color"
+                                  value={welcomeSettings.embed.color}
+                                  onChange={(event) =>
+                                    setWelcomeSettings((prev) => ({
+                                      ...prev,
+                                      embed: {
+                                        ...prev.embed,
+                                        color: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  aria-label="Embed accent color"
+                                />
+                                <span className="color-value">{welcomeSettings.embed.color}</span>
+                              </div>
+                            </div>
+                            <div className="switch-row">
+                              <label className="switch-control">
+                                <input
+                                  type="checkbox"
+                                  checked={welcomeSettings.embed.showAvatar}
+                                  onChange={() =>
+                                    setWelcomeSettings((prev) => ({
+                                      ...prev,
+                                      embed: {
+                                        ...prev.embed,
+                                        showAvatar: !prev.embed.showAvatar,
+                                      },
+                                    }))
+                                  }
+                                  aria-label="Show user avatar"
+                                />
+                              </label>
+                              <span className="switch-label">Show user avatar</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="form-grid">
+                            <label>
+                              Message text
+                              <textarea
+                                rows={4}
+                                value={welcomeSettings.text}
+                                onChange={(event) =>
+                                  setWelcomeSettings((prev) => ({
+                                    ...prev,
+                                    text: event.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <p className="muted">You can use {"{user}"} and {"{server}"} variables.</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="muted">Welcome messages are currently disabled.</p>
+                    )}
                   </div>
 
-                  {welcomeSettings.type === "embed" ? (
-                    <div className="form-grid">
-                      <label>
-                        Embed title
+                  <div className="card">
+                    <div className="card-header">
+                      <div>
+                        <h3>Farewell message</h3>
+                        <p className="muted">Say goodbye automatically when members leave.</p>
+                      </div>
+                      <Button onClick={handleFarewellSave} disabled={farewellSaving}>
+                        {farewellSaving ? "Saving..." : "Save farewell"}
+                      </Button>
+                    </div>
+                    <div className="switch-row">
+                      <label className="switch-control">
                         <input
-                          value={welcomeSettings.embed.title}
-                          onChange={(event) =>
-                            setWelcomeSettings((prev) => ({
+                          type="checkbox"
+                          checked={farewellSettings.enabled}
+                          onChange={() =>
+                            setFarewellSettings((prev) => ({
                               ...prev,
-                              embed: {
-                                ...prev.embed,
-                                title: event.target.value,
-                              },
+                              enabled: !prev.enabled,
                             }))
                           }
+                          aria-label="Enable farewell message"
                         />
                       </label>
-                      <label>
-                        Description
-                        <textarea
-                          rows={4}
-                          value={welcomeSettings.embed.description}
-                          onChange={(event) =>
-                            setWelcomeSettings((prev) => ({
-                              ...prev,
-                              embed: {
-                                ...prev.embed,
-                                description: event.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-                      <div className="field">
-                        <span>Accent color</span>
-                        <div className="color-input">
-                          <input
-                            type="color"
-                            value={welcomeSettings.embed.color}
-                            onChange={(event) =>
-                              setWelcomeSettings((prev) => ({
-                                ...prev,
-                                embed: {
-                                  ...prev.embed,
-                                  color: event.target.value,
-                                },
-                              }))
-                            }
-                            aria-label="Embed accent color"
-                          />
-                          <span className="color-value">{welcomeSettings.embed.color}</span>
+                      <span className="switch-label">Enable farewell message</span>
+                    </div>
+                    {farewellSettings.enabled ? (
+                      <>
+                        <div className="form-grid">
+                          <label>
+                            Channel
+                            <select
+                              value={farewellSettings.channelId}
+                              onChange={(event) =>
+                                setFarewellSettings((prev) => ({
+                                  ...prev,
+                                  channelId: event.target.value,
+                                }))
+                              }
+                            >
+                              {channels.map((channel) => (
+                                <option key={channel.id} value={channel.id}>
+                                  {channel.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            Message type
+                            <select
+                              value={farewellSettings.type}
+                              onChange={(event) =>
+                                setFarewellSettings((prev) => ({
+                                  ...prev,
+                                  type: event.target.value as "embed" | "text",
+                                }))
+                              }
+                            >
+                              <option value="embed">Embed</option>
+                              <option value="text">Plain text</option>
+                            </select>
+                          </label>
                         </div>
-                      </div>
-                      <div className="switch-row">
-                        <label className="switch-control">
-                          <input
-                            type="checkbox"
-                            checked={welcomeSettings.embed.showAvatar}
-                            onChange={() =>
-                              setWelcomeSettings((prev) => ({
-                                ...prev,
-                                embed: {
-                                  ...prev.embed,
-                                  showAvatar: !prev.embed.showAvatar,
-                                },
-                              }))
-                            }
-                            aria-label="Show user avatar"
-                          />
-                        </label>
-                        <span className="switch-label">Show user avatar</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="form-grid">
-                      <label>
-                        Message text
-                        <textarea
-                          rows={4}
-                          value={welcomeSettings.text}
-                          onChange={(event) =>
-                            setWelcomeSettings((prev) => ({
-                              ...prev,
-                              text: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                      <p className="muted">You can use {"{user}"} and {"{server}"} variables.</p>
-                    </div>
-                  )}
+
+                        {farewellSettings.type === "embed" ? (
+                          <div className="form-grid">
+                            <label>
+                              Embed title
+                              <input
+                                value={farewellSettings.embed.title}
+                                onChange={(event) =>
+                                  setFarewellSettings((prev) => ({
+                                    ...prev,
+                                    embed: {
+                                      ...prev.embed,
+                                      title: event.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </label>
+                            <label>
+                              Description
+                              <textarea
+                                rows={4}
+                                value={farewellSettings.embed.description}
+                                onChange={(event) =>
+                                  setFarewellSettings((prev) => ({
+                                    ...prev,
+                                    embed: {
+                                      ...prev.embed,
+                                      description: event.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </label>
+                            <div className="field">
+                              <span>Accent color</span>
+                              <div className="color-input">
+                                <input
+                                  type="color"
+                                  value={farewellSettings.embed.color}
+                                  onChange={(event) =>
+                                    setFarewellSettings((prev) => ({
+                                      ...prev,
+                                      embed: {
+                                        ...prev.embed,
+                                        color: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  aria-label="Embed accent color"
+                                />
+                                <span className="color-value">{farewellSettings.embed.color}</span>
+                              </div>
+                            </div>
+                            <div className="switch-row">
+                              <label className="switch-control">
+                                <input
+                                  type="checkbox"
+                                  checked={farewellSettings.embed.showAvatar}
+                                  onChange={() =>
+                                    setFarewellSettings((prev) => ({
+                                      ...prev,
+                                      embed: {
+                                        ...prev.embed,
+                                        showAvatar: !prev.embed.showAvatar,
+                                      },
+                                    }))
+                                  }
+                                  aria-label="Show user avatar"
+                                />
+                              </label>
+                              <span className="switch-label">Show user avatar</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="form-grid">
+                            <label>
+                              Message text
+                              <textarea
+                                rows={4}
+                                value={farewellSettings.text}
+                                onChange={(event) =>
+                                  setFarewellSettings((prev) => ({
+                                    ...prev,
+                                    text: event.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <p className="muted">You can use {"{user}"} and {"{server}"} variables.</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="muted">Farewell messages are currently disabled.</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="card discord-preview">
-                  <p className="muted">Preview</p>
-                  <div className="discord-message">
-                    <div className="discord-avatar">
-                      <img src={logo} alt="ConqBot" />
-                    </div>
-                    <div className="discord-body">
-                      <div className="discord-header">
-                        <span className="discord-username">ConqBot</span>
-                        <span className="discord-bot-tag">BOT</span>
-                        <span className="discord-time">Today at 19:00</span>
+                <div className="card-stack">
+                  <div className="card discord-preview">
+                    <p className="muted">Welcome preview</p>
+                    <div className="discord-message">
+                      <div className="discord-avatar">
+                        <img src={logo} alt="ConqBot" />
                       </div>
-                      {welcomeSettings.type === "text" ? (
-                        <p className="discord-text">{previewText}</p>
-                      ) : null}
-                      {welcomeSettings.type === "embed" ? (
-                        <div className="discord-embed">
-                          <div
-                            className="discord-embed-accent"
-                            style={{ background: welcomeSettings.embed.color }}
-                          />
-                          <div className="discord-embed-content">
-                            <div className="discord-embed-title">{previewEmbedTitle}</div>
-                            <div className="discord-embed-description">{previewEmbedDescription}</div>
-                            <div className="discord-embed-footer">Welcome message preview</div>
-                          </div>
-                          {welcomeSettings.embed.showAvatar ? (
-                            <div className="discord-embed-avatar">
-                              {user?.avatarUrl ? (
-                                <img src={user.avatarUrl} alt={user.username ?? "User"} />
-                              ) : (
-                                <span>{user?.username?.slice(0, 1) ?? "U"}</span>
-                              )}
-                            </div>
-                          ) : null}
+                      <div className="discord-body">
+                        <div className="discord-header">
+                          <span className="discord-username">ConqBot</span>
+                          <span className="discord-bot-tag">BOT</span>
+                          <span className="discord-time">Today at 19:00</span>
                         </div>
-                      ) : null}
+                        {welcomeSettings.enabled ? (
+                          welcomeSettings.type === "text" ? (
+                            <>
+                              <p className="discord-text">{previewText}</p>
+                              {welcomeImagePreview ? (
+                                <div className="discord-media">
+                                  <img src={welcomeImagePreview} alt="Welcome preview" />
+                                </div>
+                              ) : null}
+                            </>
+                          ) : (
+                            <>
+                              <div className="discord-embed">
+                                <div
+                                  className="discord-embed-accent"
+                                  style={{ background: welcomeSettings.embed.color }}
+                                />
+                                <div className="discord-embed-content">
+                                  <div className="discord-embed-title">{previewEmbedTitle}</div>
+                                  <div className="discord-embed-description">
+                                    {previewEmbedDescription}
+                                  </div>
+                                  <div className="discord-embed-footer">Welcome message preview</div>
+                                </div>
+                                {welcomeSettings.embed.showAvatar ? (
+                                  <div className="discord-embed-avatar">
+                                    {user?.avatarUrl ? (
+                                      <img src={user.avatarUrl} alt={user.username ?? "User"} />
+                                    ) : (
+                                      <span>{user?.username?.slice(0, 1) ?? "U"}</span>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
+                              {welcomeImagePreview ? (
+                                <div className="discord-media">
+                                  <img src={welcomeImagePreview} alt="Welcome preview" />
+                                </div>
+                              ) : null}
+                            </>
+                          )
+                        ) : (
+                          <p className="muted">Welcome message disabled.</p>
+                        )}
+                      </div>
                     </div>
+                    <span className="muted">Sending to {welcomeChannelLabel}</span>
                   </div>
-                  <span className="muted">Sending to {channelLabel}</span>
+
+                  <div className="card discord-preview">
+                    <p className="muted">Farewell preview</p>
+                    <div className="discord-message">
+                      <div className="discord-avatar">
+                        <img src={logo} alt="ConqBot" />
+                      </div>
+                      <div className="discord-body">
+                        <div className="discord-header">
+                          <span className="discord-username">ConqBot</span>
+                          <span className="discord-bot-tag">BOT</span>
+                          <span className="discord-time">Today at 19:00</span>
+                        </div>
+                        {farewellSettings.enabled ? (
+                          farewellSettings.type === "text" ? (
+                            <>
+                              <p className="discord-text">{previewFarewellText}</p>
+                              {farewellImagePreview ? (
+                                <div className="discord-media">
+                                  <img src={farewellImagePreview} alt="Farewell preview" />
+                                </div>
+                              ) : null}
+                            </>
+                          ) : (
+                            <>
+                              <div className="discord-embed">
+                                <div
+                                  className="discord-embed-accent"
+                                  style={{ background: farewellSettings.embed.color }}
+                                />
+                                <div className="discord-embed-content">
+                                  <div className="discord-embed-title">{previewFarewellEmbedTitle}</div>
+                                  <div className="discord-embed-description">
+                                    {previewFarewellEmbedDescription}
+                                  </div>
+                                  <div className="discord-embed-footer">Farewell message preview</div>
+                                </div>
+                                {farewellSettings.embed.showAvatar ? (
+                                  <div className="discord-embed-avatar">
+                                    {user?.avatarUrl ? (
+                                      <img src={user.avatarUrl} alt={user.username ?? "User"} />
+                                    ) : (
+                                      <span>{user?.username?.slice(0, 1) ?? "U"}</span>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
+                              {farewellImagePreview ? (
+                                <div className="discord-media">
+                                  <img src={farewellImagePreview} alt="Farewell preview" />
+                                </div>
+                              ) : null}
+                            </>
+                          )
+                        ) : (
+                          <p className="muted">Farewell message disabled.</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="muted">Sending to {farewellChannelLabel}</span>
+                  </div>
                 </div>
               </div>
             </section>
@@ -1044,12 +1553,26 @@ export const Dashboard = () => {
                   <h1>Plan events in minutes</h1>
                   <p className="muted">Create reminders and keep everyone on schedule.</p>
                 </div>
-                <Button onClick={handleCreateEvent} disabled={eventSaving}>
-                  {eventSaving ? "Creating..." : "Create event"}
-                </Button>
+                <div className="section-actions">
+                  <Button onClick={handleCreateEvent} disabled={eventSaving}>
+                    {eventSaving
+                      ? "Saving..."
+                      : editingEventId
+                      ? "Update event"
+                      : "Create event"}
+                  </Button>
+                  {editingEventId ? (
+                    <Button variant="ghost" onClick={handleCancelEdit}>
+                      Cancel edit
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-              <div className="content-grid">
+              <div className="content-grid content-grid--events">
                 <div className="card">
+                  {editingEventId ? (
+                    <p className="muted">Editing event {editingEventId}</p>
+                  ) : null}
                   <div className="form-grid">
                     <label>
                       Title
@@ -1154,24 +1677,32 @@ export const Dashboard = () => {
 
                 <div className="card">
                   <h3>Upcoming events</h3>
-                  <div className="event-list">
+                  <div className="event-grid">
                     {events.length === 0 ? (
                       <p className="muted">No events scheduled yet.</p>
                     ) : (
                       events.map((eventItem) => (
-                        <div key={eventItem.id} className="event-card">
-                          <div>
+                        <div key={eventItem.id} className="event-tile">
+                          <div className="event-tile-header">
                             <strong>{eventItem.title}</strong>
-                            <p className="muted">
-                              {eventItem.date} - {eventItem.time} -
-                              {" "}
-                              {channelNameById.get(eventItem.channelId) ?? eventItem.channelId}
-                            </p>
-                          </div>
-                          <div className="event-actions">
                             <span className={`pill ${eventItem.repeating ? "info" : "neutral"}`}>
                               {eventItem.repeating ? "Repeating" : "One-time"}
                             </span>
+                          </div>
+                          <p className="muted">
+                            {eventItem.date} • {eventItem.time}
+                          </p>
+                          <p className="muted">
+                            {channelNameById.get(eventItem.channelId) ?? eventItem.channelId}
+                          </p>
+                          <div className="event-actions">
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() => handleEditEvent(eventItem)}
+                            >
+                              Edit
+                            </button>
                             <button
                               type="button"
                               className="btn btn-ghost"
@@ -1239,28 +1770,61 @@ export const Dashboard = () => {
                   {emojiRows.map((trigger) => {
                     const emojiOption = emojiMap.get(trigger.emoji);
                     const previewSource = trigger.uploadFile ? trigger.previewUrl : trigger.imageUrl;
+                    const pickerOpen = activeEmojiPickerId === trigger.id;
+                    const pickerLabel =
+                      emojiOption?.name ??
+                      (trigger.emoji ? `Custom: ${trigger.emoji}` : "Select emoji");
                     return (
                       <div key={trigger.id} className="trigger-row">
                         <div className="trigger-emoji">
-                          <select
-                            value={trigger.emoji}
+                          <div className="emoji-select">
+                            <button
+                              type="button"
+                              className="emoji-select-trigger"
+                              onClick={() =>
+                                setActiveEmojiPickerId(pickerOpen ? null : trigger.id)
+                              }
+                            >
+                              {emojiOption?.url ? (
+                                <img src={emojiOption.url} alt={emojiOption.name} />
+                              ) : (
+                                <span className="emoji-select-placeholder">🙂</span>
+                              )}
+                              <span>{pickerLabel}</span>
+                            </button>
+                            {pickerOpen ? (
+                              <div className="emoji-select-menu">
+                                {emojiOptions.map((option) => (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    className="emoji-option"
+                                    onClick={() => {
+                                      updateEmojiRow(trigger.id, (row) => ({
+                                        ...row,
+                                        emoji: option.id,
+                                      }));
+                                      setActiveEmojiPickerId(null);
+                                    }}
+                                  >
+                                    <img src={option.url} alt={option.name} />
+                                    <span>{option.name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                          <input
+                            className="emoji-custom-input"
+                            value={emojiMap.has(trigger.emoji) ? "" : trigger.emoji}
                             onChange={(event) =>
                               updateEmojiRow(trigger.id, (row) => ({
                                 ...row,
                                 emoji: event.target.value,
                               }))
                             }
-                          >
-                            <option value="">Select emoji</option>
-                            {emojiOptions.map((option) => (
-                              <option key={option.id} value={option.id}>
-                                {option.name}
-                              </option>
-                            ))}
-                            {trigger.emoji && !emojiMap.has(trigger.emoji) ? (
-                              <option value={trigger.emoji}>Custom: {trigger.emoji}</option>
-                            ) : null}
-                          </select>
+                            placeholder="Custom emoji id or unicode"
+                          />
                           {emojiOption?.url ? (
                             <img
                               className="emoji-preview"
@@ -1332,6 +1896,68 @@ export const Dashboard = () => {
                   })}
                 </div>
                 <p className="muted">Limit: {emojiRows.length}/{maxEmojiTriggers} triggers.</p>
+              </div>
+            </section>
+          )
+        ) : null}
+
+        {activeSection === "autorole" ? (
+          autoroleLoading ? (
+            <LoadingScreen label="Loading auto role settings..." />
+          ) : (
+            <section className="content-section">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Auto Role</p>
+                  <h1>Assign roles on join</h1>
+                  <p className="muted">Automatically grant a role when someone joins the server.</p>
+                </div>
+                <Button onClick={handleAutoroleSave} disabled={autoroleSaving}>
+                  {autoroleSaving ? "Saving..." : "Save auto role"}
+                </Button>
+              </div>
+              <div className="card">
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={autoroleSettings.enabled}
+                      onChange={() =>
+                        setAutoroleSettings((prev) => ({
+                          ...prev,
+                          enabled: !prev.enabled,
+                        }))
+                      }
+                      aria-label="Enable auto role"
+                    />
+                  </label>
+                  <span className="switch-label">Enable auto role</span>
+                </div>
+                {autoroleSettings.enabled ? (
+                  <div className="form-grid">
+                    <label>
+                      Role to assign
+                      <select
+                        value={autoroleSettings.roleId}
+                        onChange={(event) =>
+                          setAutoroleSettings((prev) => ({
+                            ...prev,
+                            roleId: event.target.value,
+                          }))
+                        }
+                      >
+                        {roles.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {stripRolePrefix(role.name)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="muted">The bot must have permission to manage roles.</p>
+                  </div>
+                ) : (
+                  <p className="muted">Auto role is disabled.</p>
+                )}
               </div>
             </section>
           )
