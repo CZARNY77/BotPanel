@@ -2,10 +2,13 @@ import type {
   ChannelOption,
   EmojiOption,
   EmojiTrigger,
+  EmojiTriggerSettings,
   EventInput,
   EventItem,
   FarewellSettings,
   AutoRoleSettings,
+  RoleReactionSettings,
+  AdminLogEntry,
   Server,
   ServerMetadata,
   ServerSettings,
@@ -62,6 +65,14 @@ const defaultFarewell: FarewellSettings = {
 const defaultAutorole: AutoRoleSettings = {
   enabled: false,
   roleId: "",
+};
+
+const defaultRoleReactions: RoleReactionSettings = {
+  enabled: false,
+  channelId: "",
+  message: "React below to receive a role.",
+  pairs: [],
+  messageId: "",
 };
 
 const defaultMetadata: ServerMetadata = {
@@ -174,11 +185,27 @@ let mockEvents: Record<string, EventItem[]> = {
   ],
 };
 
-let mockEmojiTriggers: Record<string, EmojiTrigger[]> = {
-  "9001": [
-    { emoji: ":fire:", imageUrl: "https://placehold.co/320x180" },
-    { emoji: ":sword:", imageUrl: "https://placehold.co/320x180" },
-  ],
+let mockEmojiTriggers: Record<string, EmojiTriggerSettings> = {
+  "9001": {
+    requireExact: false,
+    triggers: [
+      { emoji: ":fire:", imageUrl: "https://placehold.co/320x180" },
+      { emoji: ":sword:", imageUrl: "https://placehold.co/320x180" },
+    ],
+  },
+};
+
+let mockRoleReactions: Record<string, RoleReactionSettings> = {
+  "9001": {
+    enabled: true,
+    channelId: "333",
+    message: "React below to receive a role.",
+    pairs: [
+      { emoji: "<:flame:123456789>", roleId: "555" },
+      { emoji: "<:shield:987654321>", roleId: "666" },
+    ],
+    messageId: "",
+  },
 };
 
 let mockEmojis: Record<string, EmojiOption[]> = {
@@ -239,6 +266,14 @@ const withFarewellDefaults = (settings?: Partial<FarewellSettings> | null): Fare
 const withAutoroleDefaults = (settings?: Partial<AutoRoleSettings> | null): AutoRoleSettings => ({
   ...defaultAutorole,
   ...settings,
+});
+
+const withRoleReactionsDefaults = (
+  settings?: Partial<RoleReactionSettings> | null
+): RoleReactionSettings => ({
+  ...defaultRoleReactions,
+  ...settings,
+  pairs: Array.isArray(settings?.pairs) ? settings?.pairs ?? [] : defaultRoleReactions.pairs,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -304,6 +339,7 @@ const normalizeUser = (item: Record<string, unknown>): User | null => {
     id: String(idValue),
     username: String(usernameValue),
     avatarUrl,
+    isAdminPanel: asBoolean(item.is_admin_panel ?? item.isAdminPanel ?? item.admin_panel),
   };
 };
 
@@ -529,6 +565,48 @@ const normalizeEmojiTriggers = (payload: unknown): EmojiTrigger[] => {
       return { emoji, imageUrl };
     })
     .filter((trigger): trigger is EmojiTrigger => trigger !== null);
+};
+
+const normalizeEmojiTriggerSettings = (payload: unknown): EmojiTriggerSettings => {
+  const raw = isRecord(payload)
+    ? (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+  const triggers = normalizeEmojiTriggers(raw);
+  const requireExact = isRecord(raw)
+    ? asBoolean(raw.requireExact ?? raw.require_exact ?? raw.emoji_trigger_require_exact, false)
+    : false;
+  return { triggers, requireExact };
+};
+
+const normalizeRoleReactions = (payload: unknown): RoleReactionSettings => {
+  const raw = isRecord(payload)
+    ? (payload.roleReactions as Record<string, unknown> | undefined) ??
+      (payload.role_reactions as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return withRoleReactionsDefaults();
+  }
+
+  const pairsRaw = Array.isArray(raw.pairs) ? raw.pairs : [];
+  const pairs = pairsRaw
+    .filter(isRecord)
+    .map((item) => ({
+      emoji: asString(item.emoji ?? item.emoji_id ?? item.emojiId),
+      roleId: asString(item.roleId ?? item.role_id ?? item.role),
+    }))
+    .filter((pair) => pair.emoji && pair.roleId);
+
+  return withRoleReactionsDefaults({
+    enabled: asBoolean(raw.enabled ?? raw.is_enabled ?? raw.active, defaultRoleReactions.enabled),
+    channelId: asString(raw.channelId ?? raw.channel_id ?? raw.channel, defaultRoleReactions.channelId),
+    message: asString(raw.message ?? raw.text, defaultRoleReactions.message),
+    messageId: asString(raw.messageId ?? raw.message_id, defaultRoleReactions.messageId),
+    pairs,
+  });
 };
 
 const normalizeMetadata = (payload: unknown): ServerMetadata => {
@@ -881,19 +959,18 @@ export async function getEmojis(id: string): Promise<EmojiOption[]> {
   }
 }
 
-export async function getEmojiTriggers(id: string): Promise<EmojiTrigger[]> {
+export async function getEmojiTriggers(id: string): Promise<EmojiTriggerSettings> {
   if (USE_MOCKS) {
     await sleep(200);
-    return mockEmojiTriggers[id] ?? [];
+    return mockEmojiTriggers[id] ?? { triggers: [], requireExact: false };
   }
 
   try {
     const response = await request<unknown>(`/api/servers/${id}/emoji-triggers`);
-    const raw = isRecord(response) && Array.isArray(response.triggers) ? response.triggers : response;
-    return normalizeEmojiTriggers(raw);
+    return normalizeEmojiTriggerSettings(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      return [];
+      return { triggers: [], requireExact: false };
     }
     throw error;
   }
@@ -937,23 +1014,147 @@ export async function uploadImage(file: File, guildId?: string): Promise<string>
 
 export async function updateEmojiTriggers(
   id: string,
-  triggers: EmojiTrigger[]
-): Promise<EmojiTrigger[]> {
+  settings: EmojiTriggerSettings
+): Promise<EmojiTriggerSettings> {
   if (USE_MOCKS) {
     await sleep(300);
     mockEmojiTriggers = {
       ...mockEmojiTriggers,
-      [id]: triggers,
+      [id]: settings,
     };
-    return triggers;
+    return settings;
   }
 
   const response = await request<unknown>(`/api/servers/${id}/emoji-triggers`, {
     method: "PATCH",
-    body: JSON.stringify({ triggers }),
+    body: JSON.stringify(settings),
   });
-  const raw = isRecord(response) && Array.isArray(response.triggers) ? response.triggers : response;
-  return normalizeEmojiTriggers(raw);
+  return normalizeEmojiTriggerSettings(response);
+}
+
+export async function getRoleReactions(id: string): Promise<RoleReactionSettings> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return mockRoleReactions[id] ?? withRoleReactionsDefaults();
+  }
+
+  try {
+    const response = await request<unknown>(`/api/servers/${id}/role-reactions`);
+    return normalizeRoleReactions(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return withRoleReactionsDefaults();
+    }
+    throw error;
+  }
+}
+
+export async function updateRoleReactions(
+  id: string,
+  settings: RoleReactionSettings
+): Promise<RoleReactionSettings> {
+  if (USE_MOCKS) {
+    await sleep(300);
+    mockRoleReactions = {
+      ...mockRoleReactions,
+      [id]: settings,
+    };
+    return settings;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/role-reactions`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
+  return normalizeRoleReactions(response);
+}
+
+const normalizeAdminLog = (item: Record<string, unknown>): AdminLogEntry | null => {
+  const source = asString(item.source);
+  const message = asString(item.message);
+  if (!source || !message || (source !== "conqbot" && source !== "botpanel")) {
+    return null;
+  }
+  return {
+    id: asString(item.id ?? item._id),
+    source: source as AdminLogEntry["source"],
+    level: asString(item.level ?? "INFO"),
+    logger: asString(item.logger ?? ""),
+    message,
+    timestamp: asString(item.timestamp ?? ""),
+    context: isRecord(item.context) ? (item.context as Record<string, unknown>) : undefined,
+    userId: asString(item.userId ?? item.user_id ?? ""),
+  };
+};
+
+export async function getAdminLogs(params: {
+  source: "conqbot" | "botpanel";
+  level?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<AdminLogEntry[]> {
+  const query = new URLSearchParams();
+  query.set("source", params.source);
+  if (params.level) {
+    query.set("level", params.level);
+  }
+  if (params.limit) {
+    query.set("limit", String(params.limit));
+  }
+  if (params.offset) {
+    query.set("offset", String(params.offset));
+  }
+  const response = await request<unknown>(`/api/admin/logs?${query.toString()}`);
+  const raw = isRecord(response) && Array.isArray(response.logs) ? response.logs : response;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.map((item) => (isRecord(item) ? normalizeAdminLog(item) : null)).filter(
+    (item): item is AdminLogEntry => item !== null
+  );
+}
+
+export async function getAdminUsers(): Promise<string[]> {
+  const response = await request<unknown>("/api/admin/users");
+  const raw = isRecord(response) && Array.isArray(response.users) ? response.users : response;
+  return Array.isArray(raw) ? raw.map((item) => String(item)) : [];
+}
+
+export async function addAdminUser(userId: string): Promise<string[]> {
+  const response = await request<unknown>("/api/admin/users", {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  });
+  const raw = isRecord(response) && Array.isArray(response.users) ? response.users : response;
+  return Array.isArray(raw) ? raw.map((item) => String(item)) : [];
+}
+
+export async function removeAdminUser(userId: string): Promise<string[]> {
+  const response = await request<unknown>(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+  });
+  const raw = isRecord(response) && Array.isArray(response.users) ? response.users : response;
+  return Array.isArray(raw) ? raw.map((item) => String(item)) : [];
+}
+
+export async function sendClientLog(
+  level: string,
+  message: string,
+  context?: Record<string, unknown>
+): Promise<void> {
+  if (USE_MOCKS) {
+    await sleep(50);
+    return;
+  }
+  await request<void>("/api/logs", {
+    method: "POST",
+    body: JSON.stringify({
+      level,
+      message,
+      context,
+      logger: "botpanel",
+    }),
+  });
 }
 
 export async function getWarthog(id: string): Promise<boolean> {

@@ -7,6 +7,9 @@ import {
   getEvents,
   getFarewellSettings,
   getInviteUrl,
+  getAdminLogs,
+  getAdminUsers,
+  getRoleReactions,
   getServerMetadata,
   getServers,
   getAutorole,
@@ -17,16 +20,21 @@ import {
   updateEmojiTriggers,
   updateEvent,
   updateFarewellSettings,
+  addAdminUser,
+  removeAdminUser,
+  updateRoleReactions,
   updateWelcomeSettings,
   updateWarthog,
 } from "../api/client";
 import type {
   EmojiTrigger,
   EmojiOption,
+  AdminLogEntry,
   EventInput,
   EventItem,
   FarewellSettings,
   AutoRoleSettings,
+  RoleReactionSettings,
   Server,
   ServerMetadata,
   WelcomeSettings,
@@ -36,7 +44,15 @@ import { Button } from "../components/Button";
 import { LoadingScreen } from "../components/LoadingScreen";
 import logo from "../assets/logo.png";
 
-type SectionKey = "overview" | "welcome" | "events" | "emoji" | "autorole" | "other";
+type SectionKey =
+  | "overview"
+  | "welcome"
+  | "events"
+  | "emoji"
+  | "role-reactions"
+  | "autorole"
+  | "admin"
+  | "other";
 
 type TriggerRow = EmojiTrigger & {
   id: string;
@@ -45,12 +61,21 @@ type TriggerRow = EmojiTrigger & {
   uploading?: boolean;
 };
 
+type RoleReactionRow = {
+  id: string;
+  emoji: string;
+  roleId: string;
+};
+
+type LogSource = "conqbot" | "botpanel";
+
 type LoadedState = {
   metadata: boolean;
   welcome: boolean;
   farewell: boolean;
   events: boolean;
   emoji: boolean;
+  roleReactions: boolean;
   warthog: boolean;
   autorole: boolean;
 };
@@ -62,9 +87,118 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: "welcome", label: "Greetings & Farewells" },
   { key: "events", label: "Event Creator" },
   { key: "emoji", label: "Emoji Triggers" },
+  { key: "role-reactions", label: "Role Reactions" },
   { key: "autorole", label: "Auto Role" },
+  { key: "admin", label: "Admin" },
   { key: "other", label: "Other" },
 ];
+
+const sectionIcons: Record<SectionKey, JSX.Element> = {
+  overview: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M3 11.5L12 4l9 7.5M5 10v9h5v-6h4v6h5v-9"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  welcome: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M8 10h.01M16 10h.01M7 14c1.4 1 3 1.5 5 1.5s3.6-.5 5-1.5M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  events: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M7 3v4M17 3v4M4 9h16M6 13h4M6 17h4M14 13h4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  emoji: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3l1.8 4 4.2 1.1-3 3.1.7 4.4-3.7-2.2-3.7 2.2.7-4.4-3-3.1 4.2-1.1L12 3z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  "role-reactions": (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M8 11a4 4 0 1 0 8 0 4 4 0 0 0-8 0M4 20v-1a4 4 0 0 1 4-4h4M14.5 18l1.5 1.5L20 15.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  autorole: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3l7 3v5c0 5-3 9-7 11-4-2-7-6-7-11V6l7-3z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  admin: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3l7 3v5c0 5-3 9-7 11-4-2-7-6-7-11V6l7-3z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 12.5l1.5 1.5 3.5-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  other: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 6h10M4 12h16M4 18h8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+};
 
 const fallbackChannels = [
   { id: "#welcome", name: "#welcome" },
@@ -111,6 +245,14 @@ const emptyAutorole: AutoRoleSettings = {
   roleId: "",
 };
 
+const emptyRoleReactions: RoleReactionSettings = {
+  enabled: false,
+  channelId: "",
+  message: "React below to receive a role.",
+  pairs: [],
+  messageId: "",
+};
+
 const emptyMetadata: ServerMetadata = {
   channels: [],
   roles: [],
@@ -122,6 +264,7 @@ const emptyLoadedState: LoadedState = {
   farewell: false,
   events: false,
   emoji: false,
+  roleReactions: false,
   warthog: false,
   autorole: false,
 };
@@ -132,11 +275,12 @@ const emptyLoadingState: LoadingState = {
   farewell: false,
   events: false,
   emoji: false,
+  roleReactions: false,
   warthog: false,
   autorole: false,
 };
 
-const maxEmojiTriggers = 10;
+const maxEmojiUploads = 10;
 const maxUploadBytes = 5 * 1024 * 1024;
 const createId = () => Math.random().toString(36).slice(2, 9);
 
@@ -163,8 +307,11 @@ const extractImageUrl = (value: string) => {
   return match ? match[0] : "";
 };
 
+const isPanelUploadUrl = (value: string) => value.includes("/api/uploads/");
+
 export const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const isAdminPanel = Boolean(user?.isAdminPanel);
   const [servers, setServers] = useState<Server[]>([]);
   const [activeServerId, setActiveServerId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>("overview");
@@ -201,6 +348,32 @@ export const Dashboard = () => {
   const [emojiOptionsLoading, setEmojiOptionsLoading] = useState(false);
   const [emojiSaving, setEmojiSaving] = useState(false);
   const [activeEmojiPickerId, setActiveEmojiPickerId] = useState<string | null>(null);
+  const [emojiRequireExact, setEmojiRequireExact] = useState(false);
+
+  const [roleReactions, setRoleReactions] =
+    useState<RoleReactionSettings>(emptyRoleReactions);
+  const [roleReactionRows, setRoleReactionRows] = useState<RoleReactionRow[]>([]);
+  const [roleReactionsSaving, setRoleReactionsSaving] = useState(false);
+
+  const [adminUsers, setAdminUsers] = useState<string[]>([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [adminUserInput, setAdminUserInput] = useState("");
+  const [adminLogs, setAdminLogs] = useState<Record<LogSource, AdminLogEntry[]>>({
+    conqbot: [],
+    botpanel: [],
+  });
+  const [adminLogLevels, setAdminLogLevels] = useState<Record<LogSource, string>>({
+    conqbot: "all",
+    botpanel: "all",
+  });
+  const [adminLogsLoading, setAdminLogsLoading] = useState<Record<LogSource, boolean>>({
+    conqbot: false,
+    botpanel: false,
+  });
+  const [adminLogOffsets, setAdminLogOffsets] = useState<Record<LogSource, number>>({
+    conqbot: 0,
+    botpanel: 0,
+  });
 
   const [warthogEnabled, setWarthogEnabled] = useState(true);
   const [warthogSaving, setWarthogSaving] = useState(false);
@@ -257,6 +430,9 @@ export const Dashboard = () => {
     setEmojiRows([]);
     setEmojiOptions([]);
     setEmojiOptionsLoading(false);
+    setEmojiRequireExact(false);
+    setRoleReactions(emptyRoleReactions);
+    setRoleReactionRows([]);
     setWarthogEnabled(true);
     setAutoroleSettings(emptyAutorole);
     setActiveEmojiPickerId(null);
@@ -280,6 +456,12 @@ export const Dashboard = () => {
     setError(null);
     setSuccess(null);
   }, [activeSection]);
+
+  useEffect(() => {
+    if (!isAdminPanel && activeSection === "admin") {
+      setActiveSection("overview");
+    }
+  }, [isAdminPanel, activeSection]);
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
@@ -319,6 +501,15 @@ export const Dashboard = () => {
       }));
     }
   }, [channels, farewellSettings.channelId]);
+
+  useEffect(() => {
+    if (!roleReactions.channelId && channels.length) {
+      setRoleReactions((prev) => ({
+        ...prev,
+        channelId: channels[0].id,
+      }));
+    }
+  }, [channels, roleReactions.channelId]);
 
   useEffect(() => {
     setEventForm((prev) => {
@@ -420,19 +611,43 @@ export const Dashboard = () => {
     try {
       const data = await getEmojiTriggers(activeServerId);
       setEmojiRows(
-        data.map((trigger) => ({
+        data.triggers.map((trigger) => ({
           ...trigger,
           id: createId(),
           uploadFile: null,
           previewUrl: "",
         }))
       );
+      setEmojiRequireExact(data.requireExact);
       updateLoaded("emoji", true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load emoji triggers.");
       updateLoaded("emoji", true);
     } finally {
       updateSectionLoading("emoji", false);
+    }
+  };
+
+  const loadRoleReactions = async () => {
+    if (!activeServerId || loaded.roleReactions || sectionLoading.roleReactions) {
+      return;
+    }
+    updateSectionLoading("roleReactions", true);
+    try {
+      const data = await getRoleReactions(activeServerId);
+      setRoleReactions(data);
+      setRoleReactionRows(
+        data.pairs.map((pair) => ({
+          ...pair,
+          id: createId(),
+        }))
+      );
+      updateLoaded("roleReactions", true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load role reactions.");
+      updateLoaded("roleReactions", true);
+    } finally {
+      updateSectionLoading("roleReactions", false);
     }
   };
 
@@ -485,6 +700,63 @@ export const Dashboard = () => {
     }
   };
 
+  const adminLogLimit = 30;
+
+  const loadAdminUsers = async () => {
+    if (!isAdminPanel) {
+      return;
+    }
+    setAdminUsersLoading(true);
+    try {
+      const users = await getAdminUsers();
+      setAdminUsers(users);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load admin users.");
+    } finally {
+      setAdminUsersLoading(false);
+    }
+  };
+
+  const loadAdminLogs = async (
+    source: LogSource,
+    reset = false,
+    levelOverride?: string
+  ) => {
+    if (!isAdminPanel) {
+      return;
+    }
+    setAdminLogsLoading((prev) => ({ ...prev, [source]: true }));
+    try {
+      const offset = reset ? 0 : adminLogOffsets[source];
+      const level = levelOverride ?? adminLogLevels[source];
+      const logs = await getAdminLogs({
+        source,
+        level: level === "all" ? undefined : level,
+        limit: adminLogLimit,
+        offset,
+      });
+      setAdminLogs((prev) => ({
+        ...prev,
+        [source]: reset ? logs : [...prev[source], ...logs],
+      }));
+      setAdminLogOffsets((prev) => ({
+        ...prev,
+        [source]: offset + logs.length,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load admin logs.");
+    } finally {
+      setAdminLogsLoading((prev) => ({ ...prev, [source]: false }));
+    }
+  };
+
+  const handleAdminLevelChange = (source: LogSource, level: string) => {
+    setAdminLogLevels((prev) => ({ ...prev, [source]: level }));
+    setAdminLogs((prev) => ({ ...prev, [source]: [] }));
+    setAdminLogOffsets((prev) => ({ ...prev, [source]: 0 }));
+    void loadAdminLogs(source, true, level);
+  };
+
   useEffect(() => {
     if (!activeServerId) {
       return;
@@ -506,6 +778,12 @@ export const Dashboard = () => {
       void loadEmojiOptions();
     }
 
+    if (activeSection === "role-reactions") {
+      void loadMetadata();
+      void loadRoleReactions();
+      void loadEmojiOptions();
+    }
+
     if (activeSection === "other") {
       void loadWarthog();
     }
@@ -513,6 +791,12 @@ export const Dashboard = () => {
     if (activeSection === "autorole") {
       void loadMetadata();
       void loadAutorole();
+    }
+
+    if (activeSection === "admin") {
+      void loadAdminUsers();
+      void loadAdminLogs("conqbot", true);
+      void loadAdminLogs("botpanel", true);
     }
   }, [activeSection, activeServerId]);
 
@@ -532,6 +816,25 @@ export const Dashboard = () => {
     value
       .replace(/{user}/g, user?.username ?? "New member")
       .replace(/{server}/g, activeServer?.name ?? "the server");
+
+  const formatLogTime = (value?: string) => {
+    if (!value) {
+      return "-";
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleString("en-GB", {
+      hour12: false,
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
   const handleWelcomeSave = async () => {
     if (!activeServerId) {
@@ -764,6 +1067,12 @@ export const Dashboard = () => {
       setError("Pick a server before uploading.");
       return;
     }
+    const currentRow = emojiRows.find((row) => row.id === id);
+    const uploadCount = emojiRows.filter((row) => isPanelUploadUrl(row.imageUrl)).length;
+    if (!isPanelUploadUrl(currentRow?.imageUrl ?? "") && uploadCount >= maxEmojiUploads) {
+      setError(`Upload limit reached (${maxEmojiUploads}). Use a link instead.`);
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
     updateEmojiRow(id, (row) => ({
       ...row,
@@ -802,8 +1111,9 @@ export const Dashboard = () => {
       return;
     }
 
-    if (emojiRows.length > maxEmojiTriggers) {
-      setError(`Limit is ${maxEmojiTriggers} triggers.`);
+    const uploadCount = emojiRows.filter((row) => isPanelUploadUrl(row.imageUrl)).length;
+    if (uploadCount > maxEmojiUploads) {
+      setError(`Upload limit is ${maxEmojiUploads} images. Use links for the rest.`);
       return;
     }
 
@@ -826,13 +1136,17 @@ export const Dashboard = () => {
     setError(null);
     setSuccess(null);
     try {
-      const payload = emojiRows.map((row) => ({
-        emoji: row.emoji,
-        imageUrl: row.imageUrl,
-      }));
+      const payload = {
+        triggers: emojiRows.map((row) => ({
+          emoji: row.emoji,
+          imageUrl: row.imageUrl,
+        })),
+        requireExact: emojiRequireExact,
+      };
       const updated = await updateEmojiTriggers(activeServerId, payload);
+      setEmojiRequireExact(updated.requireExact);
       setEmojiRows(
-        updated.map((trigger) => ({
+        updated.triggers.map((trigger) => ({
           ...trigger,
           id: createId(),
           uploadFile: null,
@@ -844,6 +1158,72 @@ export const Dashboard = () => {
       setError(err instanceof Error ? err.message : "Failed to save emoji triggers.");
     } finally {
       setEmojiSaving(false);
+    }
+  };
+
+  const updateRoleReactionRow = (id: string, updater: (row: RoleReactionRow) => RoleReactionRow) => {
+    setRoleReactionRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== id) {
+          return row;
+        }
+        return updater(row);
+      })
+    );
+  };
+
+  const removeRoleReactionRow = (id: string) => {
+    setRoleReactionRows((prev) => prev.filter((row) => row.id !== id));
+  };
+
+  const handleRoleReactionsSave = async () => {
+    if (!activeServerId) {
+      return;
+    }
+
+    if (roleReactions.enabled) {
+      if (!roleReactions.channelId) {
+        setError("Pick a channel for role reactions.");
+        return;
+      }
+      if (!roleReactions.message.trim()) {
+        setError("Message text cannot be empty.");
+        return;
+      }
+      if (roleReactionRows.length === 0) {
+        setError("Add at least one emoji/role pair.");
+        return;
+      }
+      if (roleReactionRows.some((row) => !row.emoji.trim() || !row.roleId.trim())) {
+        setError("Each pair needs an emoji and a role.");
+        return;
+      }
+    }
+
+    setRoleReactionsSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const payload: RoleReactionSettings = {
+        ...roleReactions,
+        pairs: roleReactionRows.map((row) => ({
+          emoji: row.emoji,
+          roleId: row.roleId,
+        })),
+      };
+      const saved = await updateRoleReactions(activeServerId, payload);
+      setRoleReactions(saved);
+      setRoleReactionRows(
+        saved.pairs.map((pair) => ({
+          ...pair,
+          id: createId(),
+        }))
+      );
+      setSuccess("Role reactions saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save role reactions.");
+    } finally {
+      setRoleReactionsSaving(false);
     }
   };
 
@@ -888,6 +1268,41 @@ export const Dashboard = () => {
       setError(err instanceof Error ? err.message : "Failed to save auto role settings.");
     } finally {
       setAutoroleSaving(false);
+    }
+  };
+
+  const handleAddAdminUser = async () => {
+    if (!adminUserInput.trim()) {
+      setError("Enter a Discord user ID.");
+      return;
+    }
+    setError(null);
+    setSuccess(null);
+    setAdminUsersLoading(true);
+    try {
+      const users = await addAdminUser(adminUserInput.trim());
+      setAdminUsers(users);
+      setAdminUserInput("");
+      setSuccess("Admin user added.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add admin user.");
+    } finally {
+      setAdminUsersLoading(false);
+    }
+  };
+
+  const handleRemoveAdminUser = async (userId: string) => {
+    setError(null);
+    setSuccess(null);
+    setAdminUsersLoading(true);
+    try {
+      const users = await removeAdminUser(userId);
+      setAdminUsers(users);
+      setSuccess("Admin user removed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove admin user.");
+    } finally {
+      setAdminUsersLoading(false);
     }
   };
 
@@ -938,6 +1353,11 @@ export const Dashboard = () => {
   const emojiLoading =
     !loaded.emoji || sectionLoading.emoji || (emojiOptionsLoading && emojiOptions.length === 0);
   const emojiUploadInProgress = emojiRows.some((row) => row.uploading);
+  const roleReactionsLoading =
+    !loaded.roleReactions ||
+    sectionLoading.roleReactions ||
+    sectionLoading.metadata ||
+    (emojiOptionsLoading && emojiOptions.length === 0);
   const warthogLoading = !loaded.warthog || sectionLoading.warthog;
   const autoroleLoading =
     !loaded.autorole || sectionLoading.autorole || sectionLoading.metadata;
@@ -945,6 +1365,10 @@ export const Dashboard = () => {
   if (loading) {
     return <LoadingScreen label="Loading dashboard..." />;
   }
+
+  const visibleSections = isAdminPanel
+    ? sections
+    : sections.filter((section) => section.key !== "admin");
 
   return (
     <div className="dashboard-shell">
@@ -999,14 +1423,15 @@ export const Dashboard = () => {
         <div className="side-divider" />
 
         <nav className="side-menu">
-          {sections.map((section) => (
+          {visibleSections.map((section) => (
             <button
               key={section.key}
               type="button"
               className={`side-item ${activeSection === section.key ? "active" : ""}`}
               onClick={() => setActiveSection(section.key)}
             >
-              {section.label}
+              <span className="side-item-icon">{sectionIcons[section.key]}</span>
+              <span>{section.label}</span>
             </button>
           ))}
         </nav>
@@ -1730,8 +2155,8 @@ export const Dashboard = () => {
               <div className="section-header">
                 <div>
                   <p className="eyebrow">Emoji Triggers</p>
-                  <h1>React with visuals</h1>
-                  <p className="muted">Attach up to 10 emoji triggers with an image response.</p>
+                  <h1>Trigger images with emoji messages</h1>
+                  <p className="muted">Upload up to 10 images or use unlimited links.</p>
                 </div>
                 <div className="section-actions">
                   <Button
@@ -1744,36 +2169,46 @@ export const Dashboard = () => {
                   <Button
                     variant="ghost"
                     onClick={() =>
-                      setEmojiRows((prev) =>
-                        prev.length >= maxEmojiTriggers
-                          ? prev
-                          : [
-                              ...prev,
-                              {
-                                id: createId(),
-                                emoji: "",
-                                imageUrl: "",
-                                uploadFile: null,
-                                previewUrl: "",
-                              },
-                            ]
-                      )
+                      setEmojiRows((prev) => [
+                        ...prev,
+                        {
+                          id: createId(),
+                          emoji: "",
+                          imageUrl: "",
+                          uploadFile: null,
+                          previewUrl: "",
+                        },
+                      ])
                     }
-                    disabled={emojiRows.length >= maxEmojiTriggers}
                   >
                     Add trigger
                   </Button>
                 </div>
               </div>
               <div className="card">
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={emojiRequireExact}
+                      onChange={() => setEmojiRequireExact((prev) => !prev)}
+                      aria-label="Require exact emoji messages"
+                    />
+                  </label>
+                  <span className="switch-label">
+                    Require messages to be only the emoji
+                  </span>
+                </div>
+                <p className="muted">
+                  When disabled, the image will send if the emoji appears anywhere in the message.
+                </p>
                 <div className="trigger-list">
                   {emojiRows.map((trigger) => {
                     const emojiOption = emojiMap.get(trigger.emoji);
                     const previewSource = trigger.uploadFile ? trigger.previewUrl : trigger.imageUrl;
                     const pickerOpen = activeEmojiPickerId === trigger.id;
                     const pickerLabel =
-                      emojiOption?.name ??
-                      (trigger.emoji ? `Custom: ${trigger.emoji}` : "Select emoji");
+                      emojiOption?.name ?? (trigger.emoji ? "Unknown emoji" : "Select emoji");
                     return (
                       <div key={trigger.id} className="trigger-row">
                         <div className="trigger-emoji">
@@ -1814,26 +2249,6 @@ export const Dashboard = () => {
                               </div>
                             ) : null}
                           </div>
-                          <input
-                            className="emoji-custom-input"
-                            value={emojiMap.has(trigger.emoji) ? "" : trigger.emoji}
-                            onChange={(event) =>
-                              updateEmojiRow(trigger.id, (row) => ({
-                                ...row,
-                                emoji: event.target.value,
-                              }))
-                            }
-                            placeholder="Custom emoji id or unicode"
-                          />
-                          {emojiOption?.url ? (
-                            <img
-                              className="emoji-preview"
-                              src={emojiOption.url}
-                              alt={emojiOption.name}
-                            />
-                          ) : (
-                            <span className="muted">No preview</span>
-                          )}
                         </div>
                         <div className="trigger-media">
                           <input
@@ -1895,10 +2310,380 @@ export const Dashboard = () => {
                     );
                   })}
                 </div>
-                <p className="muted">Limit: {emojiRows.length}/{maxEmojiTriggers} triggers.</p>
+                <p className="muted">
+                  Uploads: {emojiRows.filter((row) => isPanelUploadUrl(row.imageUrl)).length}/
+                  {maxEmojiUploads}. Links are unlimited.
+                </p>
               </div>
             </section>
           )
+        ) : null}
+
+        {activeSection === "role-reactions" ? (
+          roleReactionsLoading ? (
+            <LoadingScreen label="Loading role reactions..." />
+          ) : (
+            <section className="content-section">
+              <div className="section-header">
+                <div>
+                  <p className="eyebrow">Role Reactions</p>
+                  <h1>Let members self-assign roles</h1>
+                  <p className="muted">
+                    The bot posts a message with reactions and assigns roles when people react.
+                  </p>
+                </div>
+                <div className="section-actions">
+                  <Button onClick={handleRoleReactionsSave} disabled={roleReactionsSaving}>
+                    {roleReactionsSaving ? "Saving..." : "Save role reactions"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      setRoleReactionRows((prev) => [
+                        ...prev,
+                        {
+                          id: createId(),
+                          emoji: "",
+                          roleId: roles[0]?.id ?? "",
+                        },
+                      ])
+                    }
+                  >
+                    Add pair
+                  </Button>
+                </div>
+              </div>
+              <div className="card">
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={roleReactions.enabled}
+                      onChange={() =>
+                        setRoleReactions((prev) => ({
+                          ...prev,
+                          enabled: !prev.enabled,
+                        }))
+                      }
+                      aria-label="Enable role reactions"
+                    />
+                  </label>
+                  <span className="switch-label">Enable role reactions</span>
+                </div>
+                {roleReactions.enabled ? (
+                  <>
+                    <div className="form-grid">
+                      <label>
+                        Channel
+                        <select
+                          value={roleReactions.channelId}
+                          onChange={(event) =>
+                            setRoleReactions((prev) => ({
+                              ...prev,
+                              channelId: event.target.value,
+                            }))
+                          }
+                        >
+                          {channels.map((channel) => (
+                            <option key={channel.id} value={channel.id}>
+                              {channel.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Message text
+                        <textarea
+                          rows={3}
+                          value={roleReactions.message}
+                          onChange={(event) =>
+                            setRoleReactions((prev) => ({
+                              ...prev,
+                              message: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="reaction-list">
+                      {roleReactionRows.length === 0 ? (
+                        <p className="muted">Add at least one emoji/role pair.</p>
+                      ) : (
+                        roleReactionRows.map((row) => {
+                          const emojiOption = emojiMap.get(row.emoji);
+                          const pickerOpen = activeEmojiPickerId === row.id;
+                          const pickerLabel =
+                            emojiOption?.name ?? (row.emoji ? "Unknown emoji" : "Select emoji");
+                          return (
+                            <div key={row.id} className="reaction-row">
+                              <div className="emoji-select">
+                                <button
+                                  type="button"
+                                  className="emoji-select-trigger"
+                                  onClick={() =>
+                                    setActiveEmojiPickerId(pickerOpen ? null : row.id)
+                                  }
+                                >
+                                  {emojiOption?.url ? (
+                                    <img src={emojiOption.url} alt={emojiOption.name} />
+                                  ) : (
+                                    <span className="emoji-select-placeholder">🙂</span>
+                                  )}
+                                  <span>{pickerLabel}</span>
+                                </button>
+                                {pickerOpen ? (
+                                  <div className="emoji-select-menu">
+                                    {emojiOptions.map((option) => (
+                                      <button
+                                        key={option.id}
+                                        type="button"
+                                        className="emoji-option"
+                                        onClick={() => {
+                                          updateRoleReactionRow(row.id, (prev) => ({
+                                            ...prev,
+                                            emoji: option.id,
+                                          }));
+                                          setActiveEmojiPickerId(null);
+                                        }}
+                                      >
+                                        <img src={option.url} alt={option.name} />
+                                        <span>{option.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <label>
+                                Role
+                                <select
+                                  value={row.roleId}
+                                  onChange={(event) =>
+                                    updateRoleReactionRow(row.id, (prev) => ({
+                                      ...prev,
+                                      roleId: event.target.value,
+                                    }))
+                                  }
+                                >
+                                  {roles.map((role) => (
+                                    <option key={role.id} value={role.id}>
+                                      {stripRolePrefix(role.name)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={() => removeRoleReactionRow(row.id)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="muted">Role reactions are disabled.</p>
+                )}
+              </div>
+            </section>
+          )
+        ) : null}
+
+        {activeSection === "admin" ? (
+          <section className="content-section">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow">Admin</p>
+                <h1>System monitoring</h1>
+                <p className="muted">
+                  Review logs and manage who can access this admin console.
+                </p>
+              </div>
+            </div>
+            <div className="content-grid content-grid--admin">
+              <div className="card-stack">
+                <div className="card">
+                  <div className="card-header">
+                    <div>
+                      <h3>ConqBot logs</h3>
+                      <p className="muted">Backend logs captured from the bot runtime.</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      onClick={() => loadAdminLogs("conqbot", true)}
+                      disabled={adminLogsLoading.conqbot}
+                    >
+                      {adminLogsLoading.conqbot ? "Refreshing..." : "Refresh"}
+                    </Button>
+                  </div>
+                  <div className="form-grid split">
+                    <label>
+                      Level
+                      <select
+                        value={adminLogLevels.conqbot}
+                        onChange={(event) => handleAdminLevelChange("conqbot", event.target.value)}
+                      >
+                        <option value="all">All</option>
+                        <option value="INFO">Info</option>
+                        <option value="WARNING">Warning</option>
+                        <option value="ERROR">Error</option>
+                        <option value="CRITICAL">Critical</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="log-list">
+                    {adminLogs.conqbot.length === 0 ? (
+                      <p className="muted">No logs yet.</p>
+                    ) : (
+                      adminLogs.conqbot.map((logItem) => (
+                        <div key={logItem.id ?? logItem.timestamp} className="log-entry">
+                          <div className="log-meta">
+                            <span className={`pill log-level log-${logItem.level.toLowerCase()}`}>
+                              {logItem.level}
+                            </span>
+                            <span className="muted">{formatLogTime(logItem.timestamp)}</span>
+                            {logItem.logger ? (
+                              <span className="muted">{logItem.logger}</span>
+                            ) : null}
+                          </div>
+                          <p>{logItem.message}</p>
+                          {logItem.context && Object.keys(logItem.context).length ? (
+                            <pre className="log-context">
+                              {JSON.stringify(logItem.context, null, 2)}
+                            </pre>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => loadAdminLogs("conqbot", false)}
+                    disabled={adminLogsLoading.conqbot}
+                  >
+                    Load more
+                  </Button>
+                </div>
+
+                <div className="card">
+                  <div className="card-header">
+                    <div>
+                      <h3>BotPanel logs</h3>
+                      <p className="muted">Frontend errors reported by the dashboard.</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      onClick={() => loadAdminLogs("botpanel", true)}
+                      disabled={adminLogsLoading.botpanel}
+                    >
+                      {adminLogsLoading.botpanel ? "Refreshing..." : "Refresh"}
+                    </Button>
+                  </div>
+                  <div className="form-grid split">
+                    <label>
+                      Level
+                      <select
+                        value={adminLogLevels.botpanel}
+                        onChange={(event) => handleAdminLevelChange("botpanel", event.target.value)}
+                      >
+                        <option value="all">All</option>
+                        <option value="INFO">Info</option>
+                        <option value="WARNING">Warning</option>
+                        <option value="ERROR">Error</option>
+                        <option value="CRITICAL">Critical</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="log-list">
+                    {adminLogs.botpanel.length === 0 ? (
+                      <p className="muted">No logs yet.</p>
+                    ) : (
+                      adminLogs.botpanel.map((logItem) => (
+                        <div key={logItem.id ?? logItem.timestamp} className="log-entry">
+                          <div className="log-meta">
+                            <span className={`pill log-level log-${logItem.level.toLowerCase()}`}>
+                              {logItem.level}
+                            </span>
+                            <span className="muted">{formatLogTime(logItem.timestamp)}</span>
+                            {logItem.userId ? (
+                              <span className="muted">User {logItem.userId}</span>
+                            ) : null}
+                          </div>
+                          <p>{logItem.message}</p>
+                          {logItem.context && Object.keys(logItem.context).length ? (
+                            <pre className="log-context">
+                              {JSON.stringify(logItem.context, null, 2)}
+                            </pre>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => loadAdminLogs("botpanel", false)}
+                    disabled={adminLogsLoading.botpanel}
+                  >
+                    Load more
+                  </Button>
+                </div>
+              </div>
+
+              <div className="card-stack">
+                <div className="card">
+                  <div className="card-header">
+                    <div>
+                      <h3>Admin access</h3>
+                      <p className="muted">Only listed user IDs can open this admin tab.</p>
+                    </div>
+                  </div>
+                  <div className="form-grid">
+                    <label>
+                      Add admin user ID
+                      <input
+                        value={adminUserInput}
+                        onChange={(event) => setAdminUserInput(event.target.value)}
+                        placeholder="Discord user ID"
+                      />
+                    </label>
+                    <Button
+                      variant="outline"
+                      onClick={handleAddAdminUser}
+                      disabled={adminUsersLoading}
+                    >
+                      {adminUsersLoading ? "Saving..." : "Add admin"}
+                    </Button>
+                  </div>
+                  <div className="admin-user-list">
+                    {adminUsersLoading ? (
+                      <p className="muted">Loading admin users...</p>
+                    ) : adminUsers.length === 0 ? (
+                      <p className="muted">No extra admins added yet.</p>
+                    ) : (
+                      adminUsers.map((userId) => (
+                        <div key={userId} className="admin-user-row">
+                          <span>{userId}</span>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => handleRemoveAdminUser(userId)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <p className="muted">
+                    IDs from `ADMIN_PANEL_USER_IDS` are always allowed and may not disappear after removal.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
         ) : null}
 
         {activeSection === "autorole" ? (

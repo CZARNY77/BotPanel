@@ -2,6 +2,7 @@ export type User = {
   id: string;
   username: string;
   avatarUrl?: string;
+  isAdminPanel?: boolean;
 };
 
 export type Server = {
@@ -95,4 +96,33 @@ export type EmojiOption = {
   id: string;
   name: string;
   url: string;
+};
+
+export type EmojiTriggerSettings = {
+  triggers: EmojiTrigger[];
+  requireExact: boolean;
+};
+
+export type RoleReactionPair = {
+  emoji: string;
+  roleId: string;
+};
+
+export type RoleReactionSettings = {
+  enabled: boolean;
+  channelId: string;
+  message: string;
+  pairs: RoleReactionPair[];
+  messageId?: string;
+};
+
+export type AdminLogEntry = {
+  id?: string | null;
+  source: "conqbot" | "botpanel";
+  level: string;
+  logger?: string;
+  message: string;
+  timestamp?: string;
+  context?: Record<string, unknown>;
+  userId?: string | null;
 };
