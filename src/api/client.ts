@@ -5,8 +5,10 @@ import type {
   EmojiTriggerSettings,
   EventInput,
   EventItem,
+  EventPingMode,
   FarewellSettings,
   AutoRoleSettings,
+  RoleReactionMessage,
   RoleReactionSettings,
   AdminLogEntry,
   Server,
@@ -14,6 +16,8 @@ import type {
   ServerSettings,
   User,
   WelcomeSettings,
+  VoicePresenceLog,
+  VoicePresenceSettings,
 } from "./types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(
@@ -67,16 +71,33 @@ const defaultAutorole: AutoRoleSettings = {
   roleId: "",
 };
 
-const defaultRoleReactions: RoleReactionSettings = {
-  enabled: false,
+const defaultRoleReactionMessage: RoleReactionMessage = {
+  key: "",
   channelId: "",
+  type: "text",
   message: "React below to receive a role.",
+  embed: {
+    title: "Choose your role",
+    description: "React below to receive a role.",
+    color: "#2f7cff",
+  },
   pairs: [],
   messageId: "",
 };
 
+const defaultRoleReactions: RoleReactionSettings = {
+  enabled: false,
+  messages: [],
+};
+
+const defaultVoicePresenceSettings: VoicePresenceSettings = {
+  manualChannelIds: [],
+  schedules: [],
+};
+
 const defaultMetadata: ServerMetadata = {
   channels: [],
+  voiceChannels: [],
   roles: [],
 };
 
@@ -129,6 +150,10 @@ const mockMetadata: Record<string, ServerMetadata> = {
       { id: "222", name: "#announcements" },
       { id: "333", name: "#events" },
     ],
+    voiceChannels: [
+      { id: "888", name: "Voice - War Room" },
+      { id: "889", name: "Voice - Strategy" },
+    ],
     roles: [
       { id: "555", name: "@Raid" },
       { id: "666", name: "@Guild" },
@@ -177,7 +202,7 @@ let mockEvents: Record<string, EventItem[]> = {
       description: "Gather at the north gate.",
       date: "18.10.2025",
       time: "19:00",
-      repeating: true,
+      intervalDays: 7,
       channelId: "333",
       roleId: "555",
       durationMinutes: 90,
@@ -189,8 +214,8 @@ let mockEmojiTriggers: Record<string, EmojiTriggerSettings> = {
   "9001": {
     requireExact: false,
     triggers: [
-      { emoji: ":fire:", imageUrl: "https://placehold.co/320x180" },
-      { emoji: ":sword:", imageUrl: "https://placehold.co/320x180" },
+      { emoji: ":fire:", imageUrls: ["https://placehold.co/320x180"] },
+      { emoji: ":sword:", imageUrls: ["https://placehold.co/320x180"] },
     ],
   },
 };
@@ -198,14 +223,54 @@ let mockEmojiTriggers: Record<string, EmojiTriggerSettings> = {
 let mockRoleReactions: Record<string, RoleReactionSettings> = {
   "9001": {
     enabled: true,
-    channelId: "333",
-    message: "React below to receive a role.",
-    pairs: [
-      { emoji: "<:flame:123456789>", roleId: "555" },
-      { emoji: "<:shield:987654321>", roleId: "666" },
+    messages: [
+      {
+        ...defaultRoleReactionMessage,
+        key: "mock-1",
+        channelId: "333",
+        pairs: [
+          { emoji: "<:flame:123456789>", roleId: "555" },
+          { emoji: "<:shield:987654321>", roleId: "666" },
+        ],
+      },
     ],
-    messageId: "",
   },
+};
+
+let mockVoicePresenceSettings: Record<string, VoicePresenceSettings> = {
+  "9001": {
+    manualChannelIds: ["888"],
+    schedules: [
+      {
+        id: "sched-1",
+        enabled: true,
+        dayOfWeek: 2,
+        time: "20:00",
+        channelIds: ["888", "889"],
+        lastRun: null,
+      },
+    ],
+  },
+};
+
+let mockVoicePresenceLogs: Record<string, VoicePresenceLog[]> = {
+  "9001": [
+    {
+      id: "log-1",
+      createdAt: new Date().toISOString(),
+      source: "manual",
+      channels: [
+        { id: "888", name: "Voice - War Room" },
+        { id: "889", name: "Voice - Strategy" },
+      ],
+      members: [
+        { id: "101", name: "Czarny", channelId: "888", channelName: "War Room" },
+        { id: "102", name: "Nim", channelId: "889", channelName: "Strategy" },
+      ],
+      totalMembers: 2,
+      totalChannels: 2,
+    },
+  ],
 };
 
 let mockEmojis: Record<string, EmojiOption[]> = {
@@ -273,7 +338,9 @@ const withRoleReactionsDefaults = (
 ): RoleReactionSettings => ({
   ...defaultRoleReactions,
   ...settings,
-  pairs: Array.isArray(settings?.pairs) ? settings?.pairs ?? [] : defaultRoleReactions.pairs,
+  messages: Array.isArray(settings?.messages)
+    ? settings?.messages ?? []
+    : defaultRoleReactions.messages,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -530,12 +597,27 @@ const normalizeEvents = (payload: unknown): EventItem[] => {
         id: String(idValue),
         title: String(titleValue),
         description: asString(item.description ?? item.details),
-        date: asString(item.date ?? item.event_date),
-        time: asString(item.time ?? item.event_time),
-        repeating: asBoolean(item.repeating ?? item.is_repeating),
+        date: asString(item.date ?? item.date_start_event ?? item.event_date),
+        time: asString(item.time ?? item.time_start_event ?? item.event_time),
+        intervalDays: (() => {
+          const interval =
+            item.intervalDays ?? item.interval ?? item.repeat_days ?? item.repeatDays;
+          const parsed = Number(interval);
+          if (Number.isFinite(parsed)) {
+            return parsed;
+          }
+          return asBoolean(item.repeating ?? item.is_repeating) ? 1 : 0;
+        })(),
         channelId: asString(item.channelId ?? item.channel_id ?? item.channel),
         roleId: asString(item.roleId ?? item.role_id ?? item.role),
-        durationMinutes: asNumber(item.durationMinutes ?? item.duration_minutes ?? item.duration),
+        durationMinutes: (() => {
+          const duration = asNumber(item.durationMinutes ?? item.duration_minutes ?? item.duration);
+          if (Number.isFinite(duration) && duration > 0) {
+            return duration;
+          }
+          const hours = Number(item.activity_time ?? item.activityTime);
+          return Number.isFinite(hours) ? hours * 60 : 0;
+        })(),
         messageId: asString(item.messageId ?? item.message_id ?? item.message),
       } as EventItem;
     })
@@ -558,11 +640,20 @@ const normalizeEmojiTriggers = (payload: unknown): EmojiTrigger[] => {
     .filter(isRecord)
     .map((item) => {
       const emoji = asString(item.emoji ?? item.reaction);
-      const imageUrl = asString(item.imageUrl ?? item.image_url ?? item.url);
-      if (!emoji && !imageUrl) {
+      const imagesRaw =
+        (Array.isArray(item.imageUrls) ? item.imageUrls : null) ??
+        (Array.isArray(item.image_urls) ? item.image_urls : null);
+      const imageUrls = imagesRaw
+        ? imagesRaw.map((url) => asString(url)).filter((url) => url)
+        : [];
+      const fallbackUrl = asString(item.imageUrl ?? item.image_url ?? item.url);
+      if (!imageUrls.length && fallbackUrl) {
+        imageUrls.push(fallbackUrl);
+      }
+      if (!emoji && imageUrls.length === 0) {
         return null;
       }
-      return { emoji, imageUrl };
+      return { emoji, imageUrls };
     })
     .filter((trigger): trigger is EmojiTrigger => trigger !== null);
 };
@@ -579,6 +670,87 @@ const normalizeEmojiTriggerSettings = (payload: unknown): EmojiTriggerSettings =
   return { triggers, requireExact };
 };
 
+const normalizeVoicePresenceSettings = (payload: unknown): VoicePresenceSettings => {
+  const raw = isRecord(payload)
+    ? (payload.settings as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return { ...defaultVoicePresenceSettings };
+  }
+
+  const manualChannelIds = Array.isArray(raw.manualChannelIds ?? raw.manual_channel_ids)
+    ? (raw.manualChannelIds ?? raw.manual_channel_ids)
+        .map((item) => asString(item))
+        .filter((value) => value)
+    : [];
+
+  const schedulesRaw = Array.isArray(raw.schedules) ? raw.schedules : [];
+  const schedules = schedulesRaw
+    .filter(isRecord)
+    .map((item) => ({
+      id: asString(item.id ?? item._id ?? item.key),
+      enabled: asBoolean(item.enabled, true),
+      dayOfWeek: Number(item.dayOfWeek ?? item.day_of_week ?? 0),
+      time: asString(item.time ?? "00:00"),
+      channelIds: Array.isArray(item.channelIds ?? item.channel_ids)
+        ? (item.channelIds ?? item.channel_ids)
+            .map((value) => asString(value))
+            .filter((value) => value)
+        : [],
+      lastRun: asString(item.lastRun ?? item.last_run, "") || null,
+    }))
+    .filter((schedule) => schedule.id && Number.isFinite(schedule.dayOfWeek));
+
+  return {
+    manualChannelIds,
+    schedules,
+  };
+};
+
+const normalizeVoicePresenceLogs = (payload: unknown): VoicePresenceLog[] => {
+  const raw = isRecord(payload)
+    ? (payload.logs as unknown[] | undefined) ??
+      (payload.data as unknown[] | undefined) ??
+      payload
+    : null;
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .filter(isRecord)
+    .map((item) => ({
+      id: asString(item.id ?? item._id),
+      createdAt: asString(item.createdAt ?? item.created_at, "") || null,
+      source: (asString(item.source, "manual") as "manual" | "schedule") ?? "manual",
+      scheduleId: asString(item.scheduleId ?? item.schedule_id, "") || null,
+      channels: Array.isArray(item.channels)
+        ? item.channels
+            .filter(isRecord)
+            .map(normalizeOption)
+            .filter((channel): channel is ChannelOption => channel !== null)
+        : [],
+      members: Array.isArray(item.members)
+        ? item.members
+            .filter(isRecord)
+            .map((member) => ({
+              id: asString(member.id),
+              name: asString(member.name),
+              channelId: asString(member.channelId ?? member.channel_id),
+              channelName: asString(member.channelName ?? member.channel_name),
+            }))
+            .filter((member) => member.id && member.name)
+        : [],
+      totalMembers: asNumber(item.totalMembers ?? item.total_members ?? 0),
+      totalChannels: asNumber(item.totalChannels ?? item.total_channels ?? 0),
+    }))
+    .filter((log) => log.id);
+};
+
 const normalizeRoleReactions = (payload: unknown): RoleReactionSettings => {
   const raw = isRecord(payload)
     ? (payload.roleReactions as Record<string, unknown> | undefined) ??
@@ -591,21 +763,56 @@ const normalizeRoleReactions = (payload: unknown): RoleReactionSettings => {
     return withRoleReactionsDefaults();
   }
 
-  const pairsRaw = Array.isArray(raw.pairs) ? raw.pairs : [];
-  const pairs = pairsRaw
-    .filter(isRecord)
-    .map((item) => ({
-      emoji: asString(item.emoji ?? item.emoji_id ?? item.emojiId),
-      roleId: asString(item.roleId ?? item.role_id ?? item.role),
-    }))
-    .filter((pair) => pair.emoji && pair.roleId);
+  const normalizePairs = (pairsValue: unknown) => {
+    const pairsRaw = Array.isArray(pairsValue) ? pairsValue : [];
+    return pairsRaw
+      .filter(isRecord)
+      .map((item) => ({
+        emoji: asString(item.emoji ?? item.emoji_id ?? item.emojiId),
+        roleId: asString(item.roleId ?? item.role_id ?? item.role),
+      }))
+      .filter((pair) => pair.emoji && pair.roleId);
+  };
+
+  const normalizeMessage = (item: Record<string, unknown>): RoleReactionMessage => {
+    const embedRaw = isRecord(item.embed) ? item.embed : {};
+    const messageType =
+      String(item.type ?? item.message_type ?? item.messageType ?? "text").toLowerCase() ===
+      "embed"
+        ? "embed"
+        : "text";
+    return {
+      key: asString(item.key ?? item.id ?? item.clientId),
+      channelId: asString(item.channelId ?? item.channel_id ?? item.channel),
+      type: messageType,
+      message: asString(item.message ?? item.text, defaultRoleReactionMessage.message),
+      embed: {
+        title: asString(embedRaw.title, defaultRoleReactionMessage.embed?.title ?? ""),
+        description: asString(embedRaw.description, defaultRoleReactionMessage.embed?.description ?? ""),
+        color: asString(embedRaw.color, defaultRoleReactionMessage.embed?.color ?? "#2f7cff"),
+      },
+      pairs: normalizePairs(item.pairs),
+      messageId: asString(item.messageId ?? item.message_id),
+    };
+  };
+
+  const messagesRaw = Array.isArray(raw.messages) ? raw.messages : null;
+  const messages = messagesRaw
+    ? messagesRaw.filter(isRecord).map(normalizeMessage)
+    : [
+        normalizeMessage({
+          channelId: raw.channelId ?? raw.channel_id ?? raw.channel,
+          message: raw.message ?? raw.text,
+          messageId: raw.messageId ?? raw.message_id,
+          pairs: raw.pairs,
+          type: raw.type ?? raw.message_type ?? raw.messageType ?? "text",
+          embed: raw.embed,
+        }),
+      ];
 
   return withRoleReactionsDefaults({
     enabled: asBoolean(raw.enabled ?? raw.is_enabled ?? raw.active, defaultRoleReactions.enabled),
-    channelId: asString(raw.channelId ?? raw.channel_id ?? raw.channel, defaultRoleReactions.channelId),
-    message: asString(raw.message ?? raw.text, defaultRoleReactions.message),
-    messageId: asString(raw.messageId ?? raw.message_id, defaultRoleReactions.messageId),
-    pairs,
+    messages: messages.filter((message) => message.channelId || message.pairs.length),
   });
 };
 
@@ -619,10 +826,19 @@ const normalizeMetadata = (payload: unknown): ServerMetadata => {
   }
 
   const channelsRaw = Array.isArray(raw.channels) ? raw.channels : [];
+  const voiceChannelsRaw = Array.isArray(raw.voice_channels)
+    ? raw.voice_channels
+    : Array.isArray(raw.voiceChannels)
+    ? raw.voiceChannels
+    : [];
   const rolesRaw = Array.isArray(raw.roles) ? raw.roles : [];
 
   return {
     channels: channelsRaw
+      .filter(isRecord)
+      .map(normalizeOption)
+      .filter((item): item is ChannelOption => item !== null),
+    voiceChannels: voiceChannelsRaw
       .filter(isRecord)
       .map(normalizeOption)
       .filter((item): item is ChannelOption => item !== null),
@@ -942,6 +1158,30 @@ export async function deleteEvent(id: string, eventId: string): Promise<string> 
   return eventId;
 }
 
+export async function pingEvent(
+  id: string,
+  eventId: string,
+  mode: EventPingMode
+): Promise<number> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return 0;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/events/${eventId}/ping`, {
+    method: "POST",
+    body: JSON.stringify({ mode }),
+  });
+
+  if (isRecord(response)) {
+    const pinged = response.pinged ?? response.count ?? response.total;
+    if (pinged !== undefined) {
+      return Number(pinged);
+    }
+  }
+  return 0;
+}
+
 export async function getEmojis(id: string): Promise<EmojiOption[]> {
   if (USE_MOCKS) {
     await sleep(200);
@@ -1030,6 +1270,95 @@ export async function updateEmojiTriggers(
     body: JSON.stringify(settings),
   });
   return normalizeEmojiTriggerSettings(response);
+}
+
+export async function getVoicePresenceSettings(id: string): Promise<VoicePresenceSettings> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return mockVoicePresenceSettings[id] ?? { ...defaultVoicePresenceSettings };
+  }
+
+  try {
+    const response = await request<unknown>(`/api/servers/${id}/voice-presence/settings`);
+    return normalizeVoicePresenceSettings(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return { ...defaultVoicePresenceSettings };
+    }
+    throw error;
+  }
+}
+
+export async function updateVoicePresenceSettings(
+  id: string,
+  settings: VoicePresenceSettings
+): Promise<VoicePresenceSettings> {
+  if (USE_MOCKS) {
+    await sleep(300);
+    mockVoicePresenceSettings = {
+      ...mockVoicePresenceSettings,
+      [id]: settings,
+    };
+    return settings;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/voice-presence/settings`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
+  return normalizeVoicePresenceSettings(response);
+}
+
+export async function runVoicePresence(
+  id: string,
+  channelIds: string[]
+): Promise<VoicePresenceLog | null> {
+  if (USE_MOCKS) {
+    await sleep(300);
+    const log: VoicePresenceLog = {
+      id: `log-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      source: "manual",
+      channels: mockMetadata[id]?.voiceChannels ?? [],
+      members: [],
+      totalMembers: 0,
+      totalChannels: (mockMetadata[id]?.voiceChannels ?? []).length,
+    };
+    mockVoicePresenceLogs = {
+      ...mockVoicePresenceLogs,
+      [id]: [log, ...(mockVoicePresenceLogs[id] ?? [])],
+    };
+    return log;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/voice-presence/run`, {
+    method: "POST",
+    body: JSON.stringify({ channelIds }),
+  });
+  const raw = isRecord(response) ? response.snapshot : response;
+  const logs = normalizeVoicePresenceLogs({ logs: raw ? [raw] : [] });
+  return logs[0] ?? null;
+}
+
+export async function getVoicePresenceLogs(
+  id: string,
+  options: { limit?: number; offset?: number } = {}
+): Promise<VoicePresenceLog[]> {
+  if (USE_MOCKS) {
+    await sleep(200);
+    return mockVoicePresenceLogs[id] ?? [];
+  }
+
+  const query = new URLSearchParams();
+  if (options.limit) {
+    query.set("limit", String(options.limit));
+  }
+  if (options.offset) {
+    query.set("offset", String(options.offset));
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<unknown>(`/api/servers/${id}/voice-presence/logs${suffix}`);
+  return normalizeVoicePresenceLogs(response);
 }
 
 export async function getRoleReactions(id: string): Promise<RoleReactionSettings> {

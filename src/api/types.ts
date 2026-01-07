@@ -40,6 +40,7 @@ export type RoleOption = {
 
 export type ServerMetadata = {
   channels: ChannelOption[];
+  voiceChannels: ChannelOption[];
   roles: RoleOption[];
 };
 
@@ -69,7 +70,7 @@ export type EventItem = {
   description: string;
   date: string;
   time: string;
-  repeating: boolean;
+  intervalDays: number;
   channelId: string;
   roleId: string;
   durationMinutes: number;
@@ -81,21 +82,23 @@ export type EventInput = {
   description: string;
   date: string;
   time: string;
-  repeating: boolean;
+  intervalDays: number;
   channelId: string;
   roleId: string;
   durationMinutes: number;
 };
 
+export type EventPingMode = "unchecked" | "tentative" | "declined";
+
 export type EmojiTrigger = {
   emoji: string;
-  imageUrl: string;
+  imageUrls: string[];
 };
 
 export type EmojiOption = {
   id: string;
   name: string;
-  url: string;
+  url?: string;
 };
 
 export type EmojiTriggerSettings = {
@@ -103,17 +106,60 @@ export type EmojiTriggerSettings = {
   requireExact: boolean;
 };
 
+export type VoicePresenceSchedule = {
+  id: string;
+  enabled: boolean;
+  dayOfWeek: number;
+  time: string;
+  channelIds: string[];
+  lastRun?: string | null;
+};
+
+export type VoicePresenceSettings = {
+  manualChannelIds: string[];
+  schedules: VoicePresenceSchedule[];
+};
+
+export type VoicePresenceMember = {
+  id: string;
+  name: string;
+  channelId: string;
+  channelName: string;
+};
+
+export type VoicePresenceLog = {
+  id?: string | null;
+  createdAt?: string | null;
+  source: "manual" | "schedule";
+  scheduleId?: string | null;
+  channels: ChannelOption[];
+  members: VoicePresenceMember[];
+  totalMembers: number;
+  totalChannels: number;
+};
+
 export type RoleReactionPair = {
   emoji: string;
   roleId: string;
 };
 
-export type RoleReactionSettings = {
-  enabled: boolean;
+export type RoleReactionMessage = {
+  key?: string;
   channelId: string;
+  type: "text" | "embed";
   message: string;
+  embed?: {
+    title: string;
+    description: string;
+    color: string;
+  };
   pairs: RoleReactionPair[];
   messageId?: string;
+};
+
+export type RoleReactionSettings = {
+  enabled: boolean;
+  messages: RoleReactionMessage[];
 };
 
 export type AdminLogEntry = {
