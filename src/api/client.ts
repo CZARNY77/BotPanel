@@ -603,20 +603,26 @@ const normalizeWarthogSettings = (payload: unknown): WarthogSettings => {
     return { ...defaultWarthogSettings };
   }
 
+  const allowedRolesRaw = raw.allowedRoles ?? raw.allowed_roles;
+  const whitelistRaw = raw.whitelist ?? raw.immune;
+
   return {
     enabled: asBoolean(raw.enabled ?? raw.warthogEnabled, defaultWarthogSettings.enabled),
     roleLock: asBoolean(raw.roleLock ?? raw.role_lock, defaultWarthogSettings.roleLock),
-    allowedRoles: Array.isArray(raw.allowedRoles ?? raw.allowed_roles)
-      ? (raw.allowedRoles ?? raw.allowed_roles)
-          .map((item: unknown) => asString(item))
+    allowedRoles: Array.isArray(allowedRolesRaw)
+      ? (allowedRolesRaw as unknown[])
+          .map((item) => asString(item))
           .filter((value): value is string => Boolean(value))
       : [],
-    whitelist: Array.isArray(raw.whitelist ?? raw.immune)
-      ? (raw.whitelist ?? raw.immune)
-          .map((item: unknown) => asString(item))
+    whitelist: Array.isArray(whitelistRaw)
+      ? (whitelistRaw as unknown[])
+          .map((item) => asString(item))
           .filter((value): value is string => Boolean(value))
       : [],
-    bounceMessage: asString(raw.bounceMessage ?? raw.bounce_message, defaultWarthogSettings.bounceMessage),
+    bounceMessage: asString(
+      raw.bounceMessage ?? raw.bounce_message,
+      defaultWarthogSettings.bounceMessage
+    ),
     bounceGif: asString(raw.bounceGif ?? raw.bounce_gif, defaultWarthogSettings.bounceGif),
   };
 };
