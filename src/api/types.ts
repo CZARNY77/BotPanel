@@ -108,6 +108,7 @@ export type EmojiTriggerSettings = {
 
 export type VoicePresenceSchedule = {
   id: string;
+  name?: string;
   enabled: boolean;
   dayOfWeek: number;
   time: string;
@@ -117,6 +118,7 @@ export type VoicePresenceSchedule = {
 
 export type VoicePresenceSettings = {
   manualChannelIds: string[];
+  manualName?: string;
   schedules: VoicePresenceSchedule[];
 };
 
@@ -132,6 +134,7 @@ export type VoicePresenceLog = {
   createdAt?: string | null;
   source: "manual" | "schedule";
   scheduleId?: string | null;
+  name?: string | null;
   channels: ChannelOption[];
   members: VoicePresenceMember[];
   totalMembers: number;
@@ -171,4 +174,13 @@ export type AdminLogEntry = {
   timestamp?: string;
   context?: Record<string, unknown>;
   userId?: string | null;
+};
+
+export type WarthogSettings = {
+  enabled: boolean;
+  roleLock: boolean;
+  allowedRoles: string[];
+  whitelist: string[];
+  bounceMessage: string;
+  bounceGif: string;
 };

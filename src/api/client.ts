@@ -14,6 +14,7 @@ import type {
   Server,
   ServerMetadata,
   ServerSettings,
+  WarthogSettings,
   User,
   WelcomeSettings,
   VoicePresenceLog,
@@ -92,7 +93,17 @@ const defaultRoleReactions: RoleReactionSettings = {
 
 const defaultVoicePresenceSettings: VoicePresenceSettings = {
   manualChannelIds: [],
+  manualName: "",
   schedules: [],
+};
+
+const defaultWarthogSettings: WarthogSettings = {
+  enabled: true,
+  roleLock: false,
+  allowedRoles: [],
+  whitelist: [],
+  bounceMessage: "Warthog bounced off. This user is protected.",
+  bounceGif: "",
 };
 
 const defaultMetadata: ServerMetadata = {
@@ -151,8 +162,8 @@ const mockMetadata: Record<string, ServerMetadata> = {
       { id: "333", name: "#events" },
     ],
     voiceChannels: [
-      { id: "888", name: "Voice - War Room" },
-      { id: "889", name: "Voice - Strategy" },
+      { id: "888", name: "War Room" },
+      { id: "889", name: "Strategy" },
     ],
     roles: [
       { id: "555", name: "@Raid" },
@@ -240,9 +251,11 @@ let mockRoleReactions: Record<string, RoleReactionSettings> = {
 let mockVoicePresenceSettings: Record<string, VoicePresenceSettings> = {
   "9001": {
     manualChannelIds: ["888"],
+    manualName: "War room check",
     schedules: [
       {
         id: "sched-1",
+        name: "Wednesday raid",
         enabled: true,
         dayOfWeek: 2,
         time: "20:00",
@@ -259,9 +272,10 @@ let mockVoicePresenceLogs: Record<string, VoicePresenceLog[]> = {
       id: "log-1",
       createdAt: new Date().toISOString(),
       source: "manual",
+      name: "War room check",
       channels: [
-        { id: "888", name: "Voice - War Room" },
-        { id: "889", name: "Voice - Strategy" },
+        { id: "888", name: "War Room" },
+        { id: "889", name: "Strategy" },
       ],
       members: [
         { id: "101", name: "Czarny", channelId: "888", channelName: "War Room" },
@@ -288,8 +302,11 @@ let mockEmojis: Record<string, EmojiOption[]> = {
   ],
 };
 
-let mockWarthog: Record<string, boolean> = {
-  "9001": true,
+let mockWarthog: Record<string, WarthogSettings> = {
+  "9001": {
+    ...defaultWarthogSettings,
+    enabled: true,
+  },
 };
 
 let mockAutorole: Record<string, AutoRoleSettings> = {
@@ -423,6 +440,8 @@ const normalizeOption = (item: Record<string, unknown>): ChannelOption | null =>
     name: String(nameValue),
   };
 };
+
+const stripVoicePrefix = (value: string) => value.replace(/^voice\s*-\s*/i, "");
 
 const normalizeEmojiOption = (item: Record<string, unknown>): EmojiOption | null => {
   const idValue = item.id ?? item.value ?? item.emoji_id ?? item.emoji;
@@ -573,6 +592,35 @@ const normalizeAutorole = (payload: unknown): AutoRoleSettings => {
   });
 };
 
+const normalizeWarthogSettings = (payload: unknown): WarthogSettings => {
+  const raw = isRecord(payload)
+    ? (payload.warthog as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return { ...defaultWarthogSettings };
+  }
+
+  return {
+    enabled: asBoolean(raw.enabled ?? raw.warthogEnabled, defaultWarthogSettings.enabled),
+    roleLock: asBoolean(raw.roleLock ?? raw.role_lock, defaultWarthogSettings.roleLock),
+    allowedRoles: Array.isArray(raw.allowedRoles ?? raw.allowed_roles)
+      ? (raw.allowedRoles ?? raw.allowed_roles)
+          .map((item: unknown) => asString(item))
+          .filter((value): value is string => Boolean(value))
+      : [],
+    whitelist: Array.isArray(raw.whitelist ?? raw.immune)
+      ? (raw.whitelist ?? raw.immune)
+          .map((item: unknown) => asString(item))
+          .filter((value): value is string => Boolean(value))
+      : [],
+    bounceMessage: asString(raw.bounceMessage ?? raw.bounce_message, defaultWarthogSettings.bounceMessage),
+    bounceGif: asString(raw.bounceGif ?? raw.bounce_gif, defaultWarthogSettings.bounceGif),
+  };
+};
+
 const normalizeEvents = (payload: unknown): EventItem[] => {
   const raw = isRecord(payload)
     ? (payload.events as unknown[] | undefined) ??
@@ -687,12 +735,14 @@ const normalizeVoicePresenceSettings = (payload: unknown): VoicePresenceSettings
         .map((item: unknown) => asString(item))
         .filter((value): value is string => Boolean(value))
     : [];
+  const manualName = asString(raw.manualName ?? raw.manual_name, "");
 
   const schedulesRaw = Array.isArray(raw.schedules) ? raw.schedules : [];
   const schedules = schedulesRaw
     .filter(isRecord)
     .map((item) => ({
       id: asString(item.id ?? item._id ?? item.key),
+      name: asString(item.name ?? item.label ?? "", ""),
       enabled: asBoolean(item.enabled, true),
       dayOfWeek: Number(item.dayOfWeek ?? item.day_of_week ?? 0),
       time: asString(item.time ?? "00:00"),
@@ -710,6 +760,7 @@ const normalizeVoicePresenceSettings = (payload: unknown): VoicePresenceSettings
 
   return {
     manualChannelIds,
+    manualName,
     schedules,
   };
 };
@@ -732,6 +783,7 @@ const normalizeVoicePresenceLogs = (payload: unknown): VoicePresenceLog[] => {
       createdAt: asString(item.createdAt ?? item.created_at, "") || null,
       source: (asString(item.source, "manual") as "manual" | "schedule") ?? "manual",
       scheduleId: asString(item.scheduleId ?? item.schedule_id, "") || null,
+      name: asString(item.name ?? item.label, "") || null,
       channels: Array.isArray(item.channels)
         ? item.channels
             .filter(isRecord)
@@ -844,7 +896,13 @@ const normalizeMetadata = (payload: unknown): ServerMetadata => {
       .filter((item): item is ChannelOption => item !== null),
     voiceChannels: voiceChannelsRaw
       .filter(isRecord)
-      .map(normalizeOption)
+      .map((item) => {
+        const option = normalizeOption(item);
+        if (!option) {
+          return null;
+        }
+        return { ...option, name: stripVoicePrefix(option.name) };
+      })
       .filter((item): item is ChannelOption => item !== null),
     roles: rolesRaw
       .filter(isRecord)
@@ -1315,7 +1373,8 @@ export async function updateVoicePresenceSettings(
 
 export async function runVoicePresence(
   id: string,
-  channelIds: string[]
+  channelIds: string[],
+  name?: string
 ): Promise<VoicePresenceLog | null> {
   if (USE_MOCKS) {
     await sleep(300);
@@ -1323,6 +1382,7 @@ export async function runVoicePresence(
       id: `log-${Date.now()}`,
       createdAt: new Date().toISOString(),
       source: "manual",
+      name: name || "",
       channels: mockMetadata[id]?.voiceChannels ?? [],
       members: [],
       totalMembers: 0,
@@ -1337,7 +1397,7 @@ export async function runVoicePresence(
 
   const response = await request<unknown>(`/api/servers/${id}/voice-presence/run`, {
     method: "POST",
-    body: JSON.stringify({ channelIds }),
+    body: JSON.stringify({ channelIds, name }),
   });
   const raw = isRecord(response) ? response.snapshot : response;
   const logs = normalizeVoicePresenceLogs({ logs: raw ? [raw] : [] });
@@ -1490,46 +1550,42 @@ export async function sendClientLog(
   });
 }
 
-export async function getWarthog(id: string): Promise<boolean> {
+export async function getWarthog(id: string): Promise<WarthogSettings> {
   if (USE_MOCKS) {
     await sleep(150);
-    return mockWarthog[id] ?? true;
+    return mockWarthog[id] ?? { ...defaultWarthogSettings };
   }
 
   try {
     const response = await request<unknown>(`/api/servers/${id}/warthog`);
-    if (isRecord(response)) {
-      return asBoolean(response.enabled ?? response.warthogEnabled, true);
-    }
-    return true;
+    return normalizeWarthogSettings(response);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      return true;
+      return { ...defaultWarthogSettings };
     }
     throw error;
   }
 }
 
-export async function updateWarthog(id: string, enabled: boolean): Promise<boolean> {
+export async function updateWarthog(
+  id: string,
+  settings: WarthogSettings
+): Promise<WarthogSettings> {
   if (USE_MOCKS) {
     await sleep(250);
     mockWarthog = {
       ...mockWarthog,
-      [id]: enabled,
+      [id]: settings,
     };
-    return enabled;
+    return settings;
   }
 
   const response = await request<unknown>(`/api/servers/${id}/warthog`, {
     method: "PATCH",
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify(settings),
   });
 
-  if (isRecord(response)) {
-    return asBoolean(response.enabled ?? response.warthogEnabled, enabled);
-  }
-
-  return enabled;
+  return normalizeWarthogSettings(response);
 }
 
 export async function getAutorole(id: string): Promise<AutoRoleSettings> {

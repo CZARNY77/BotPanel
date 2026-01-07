@@ -46,6 +46,7 @@ import type {
   RoleReactionSettings,
   Server,
   ServerMetadata,
+  WarthogSettings,
   VoicePresenceLog,
   VoicePresenceSettings,
   WelcomeSettings,
@@ -53,6 +54,7 @@ import type {
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { LoadingScreen } from "../components/LoadingScreen";
+import { SearchableSelect } from "../components/SearchableSelect";
 import logo from "../assets/logo.png";
 import defaultEmojiOptionsRaw from "../data/default-emojis.json";
 
@@ -292,8 +294,18 @@ const emptyAutorole: AutoRoleSettings = {
   roleId: "",
 };
 
+const emptyWarthog: WarthogSettings = {
+  enabled: true,
+  roleLock: false,
+  allowedRoles: [],
+  whitelist: [],
+  bounceMessage: "Warthog bounced off. This user is protected.",
+  bounceGif: "",
+};
+
 const emptyVoicePresenceSettings: VoicePresenceSettings = {
   manualChannelIds: [],
+  manualName: "",
   schedules: [],
 };
 
@@ -724,7 +736,7 @@ export const Dashboard = () => {
   const [voicePresenceSaving, setVoicePresenceSaving] = useState(false);
   const [voicePresenceRunning, setVoicePresenceRunning] = useState(false);
   const [voicePresenceLogOffset, setVoicePresenceLogOffset] = useState(0);
-  const [expandedPresenceLogId, setExpandedPresenceLogId] = useState<string | null>(null);
+  const [activePresenceLog, setActivePresenceLog] = useState<VoicePresenceLog | null>(null);
 
   const [activeRoleEmojiPickerId, setActiveRoleEmojiPickerId] = useState<string | null>(null);
   const [roleEmojiSearch, setRoleEmojiSearch] = useState("");
@@ -757,8 +769,11 @@ export const Dashboard = () => {
     botpanel: 0,
   });
 
-  const [warthogEnabled, setWarthogEnabled] = useState(true);
+  const [warthogSettings, setWarthogSettings] = useState<WarthogSettings>(emptyWarthog);
+  const [warthogBaseline, setWarthogBaseline] = useState<WarthogSettings>(emptyWarthog);
   const [warthogSaving, setWarthogSaving] = useState(false);
+  const [warthogRoleQuery, setWarthogRoleQuery] = useState("");
+  const [warthogWhitelistInput, setWarthogWhitelistInput] = useState("");
 
   const [autoroleSettings, setAutoroleSettings] = useState<AutoRoleSettings>(emptyAutorole);
   const [autoroleSaving, setAutoroleSaving] = useState(false);
@@ -846,11 +861,14 @@ export const Dashboard = () => {
     setVoicePresenceLogsLoading(false);
     setVoicePresenceSaving(false);
     setVoicePresenceRunning(false);
-    setExpandedPresenceLogId(null);
+    setActivePresenceLog(null);
     setRoleReactions(emptyRoleReactions);
     setRoleReactionMessages([]);
     setRoleReactionsBaseline(emptyRoleReactions);
-    setWarthogEnabled(true);
+    setWarthogSettings(emptyWarthog);
+    setWarthogBaseline(emptyWarthog);
+    setWarthogRoleQuery("");
+    setWarthogWhitelistInput("");
     setAutoroleSettings(emptyAutorole);
     setAutoroleBaseline(emptyAutorole);
     setActiveEmojiPickerId(null);
@@ -1182,8 +1200,9 @@ export const Dashboard = () => {
     }
     updateSectionLoading("warthog", true);
     try {
-      const enabled = await getWarthog(activeServerId);
-      setWarthogEnabled(enabled);
+      const settings = await getWarthog(activeServerId);
+      setWarthogSettings(settings);
+      setWarthogBaseline(settings);
       updateLoaded("warthog", true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load Warthog settings.");
@@ -1805,6 +1824,7 @@ export const Dashboard = () => {
         ...prev.schedules,
         {
           id: createId(),
+          name: "",
           enabled: true,
           dayOfWeek: 0,
           time: "20:00",
@@ -1859,7 +1879,8 @@ export const Dashboard = () => {
     try {
       const log = await runVoicePresence(
         activeServerId,
-        voicePresenceSettings.manualChannelIds
+        voicePresenceSettings.manualChannelIds,
+        voicePresenceSettings.manualName
       );
       if (log) {
         setVoicePresenceLogs((prev) => [log, ...prev]);
@@ -1985,25 +2006,49 @@ export const Dashboard = () => {
     }
   };
 
-  const handleWarthogToggle = async () => {
+  const handleWarthogToggle = () => {
+    setWarthogSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
+  };
+
+  const handleWarthogSave = async () => {
     if (!activeServerId) {
       return;
     }
-    const nextValue = !warthogEnabled;
-    setWarthogEnabled(nextValue);
     setWarthogSaving(true);
     setError(null);
     setSuccess(null);
     try {
-      const saved = await updateWarthog(activeServerId, nextValue);
-      setWarthogEnabled(saved);
-      setSuccess("Warthog toggle updated.");
+      const saved = await updateWarthog(activeServerId, warthogSettings);
+      setWarthogSettings(saved);
+      setWarthogBaseline(saved);
+      setSuccess("Warthog settings saved.");
     } catch (err) {
-      setWarthogEnabled((prev) => !prev);
       setError(err instanceof Error ? err.message : "Failed to update Warthog mode.");
     } finally {
       setWarthogSaving(false);
     }
+  };
+
+  const addWarthogWhitelist = () => {
+    const entries = warthogWhitelistInput
+      .split(/[\s,]+/)
+      .map((value) => value.trim())
+      .filter((value) => value);
+    if (entries.length === 0) {
+      return;
+    }
+    setWarthogSettings((prev) => ({
+      ...prev,
+      whitelist: Array.from(new Set([...prev.whitelist, ...entries])),
+    }));
+    setWarthogWhitelistInput("");
+  };
+
+  const removeWarthogWhitelist = (userId: string) => {
+    setWarthogSettings((prev) => ({
+      ...prev,
+      whitelist: prev.whitelist.filter((entry) => entry !== userId),
+    }));
   };
 
   const handleAutoroleSave = async () => {
@@ -2114,27 +2159,15 @@ export const Dashboard = () => {
     return map;
   }, [roleEmojiOptions]);
 
-  const presenceStats = useMemo(() => {
-    const memberCounts = new Map<string, { id: string; name: string; count: number }>();
-    voicePresenceLogs.forEach((log) => {
-      log.members.forEach((member) => {
-        const existing = memberCounts.get(member.id);
-        if (existing) {
-          existing.count += 1;
-        } else {
-          memberCounts.set(member.id, { id: member.id, name: member.name, count: 1 });
-        }
-      });
-    });
-    const topMembers = Array.from(memberCounts.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-    return {
-      totalSnapshots: voicePresenceLogs.length,
-      uniqueMembers: memberCounts.size,
-      topMembers,
-    };
-  }, [voicePresenceLogs]);
+  const warthogRoleQueryNormalized = warthogRoleQuery.trim().toLowerCase();
+  const filteredWarthogRoles = useMemo(() => {
+    if (!warthogRoleQueryNormalized) {
+      return roles;
+    }
+    return roles.filter((role) =>
+      stripRolePrefix(role.name).toLowerCase().includes(warthogRoleQueryNormalized)
+    );
+  }, [roles, warthogRoleQueryNormalized]);
 
   const roleEmojiQuery = roleEmojiSearch.trim().toLowerCase();
   const filteredRoleCustomEmojis = useMemo(() => {
@@ -2211,6 +2244,7 @@ export const Dashboard = () => {
   const roleReactionsDirty =
     loaded.roleReactions && !isEqual(roleReactionComparable, roleReactionsBaseline);
   const autoroleDirty = loaded.autorole && !isEqual(autoroleSettings, autoroleBaseline);
+  const warthogDirty = loaded.warthog && !isEqual(warthogSettings, warthogBaseline);
 
   const hasUnsavedChanges = (() => {
     if (activeSection === "welcome") {
@@ -2231,6 +2265,9 @@ export const Dashboard = () => {
     if (activeSection === "autorole") {
       return autoroleDirty;
     }
+    if (activeSection === "other") {
+      return warthogDirty;
+    }
     return false;
   })();
 
@@ -2246,7 +2283,8 @@ export const Dashboard = () => {
     (activeSection === "emoji" && (emojiSaving || emojiUploadInProgress)) ||
     (activeSection === "presence" && voicePresenceSaving) ||
     (activeSection === "role-reactions" && roleReactionsSaving) ||
-    (activeSection === "autorole" && autoroleSaving);
+    (activeSection === "autorole" && autoroleSaving) ||
+    (activeSection === "other" && warthogSaving);
   const discardBarDisabled = saveBarDisabled;
 
   const handleUnsavedSave = async () => {
@@ -2277,6 +2315,10 @@ export const Dashboard = () => {
     }
     if (activeSection === "autorole") {
       await handleAutoroleSave();
+      return;
+    }
+    if (activeSection === "other") {
+      await handleWarthogSave();
     }
   };
 
@@ -2319,6 +2361,13 @@ export const Dashboard = () => {
     }
     if (activeSection === "autorole") {
       setAutoroleSettings(autoroleBaseline);
+      return;
+    }
+    if (activeSection === "other") {
+      setWarthogSettings(warthogBaseline);
+      setWarthogRoleQuery("");
+      setWarthogWhitelistInput("");
+      return;
     }
   };
 
@@ -2868,21 +2917,20 @@ export const Dashboard = () => {
                         <div className="form-grid">
                           <label>
                             Channel
-                            <select
+                            <SearchableSelect
                               value={welcomeSettings.channelId}
-                              onChange={(event) =>
+                              onChange={(value) =>
                                 setWelcomeSettings((prev) => ({
                                   ...prev,
-                                  channelId: event.target.value,
+                                  channelId: value,
                                 }))
                               }
-                            >
-                              {channels.map((channel) => (
-                                <option key={channel.id} value={channel.id}>
-                                  {channel.name}
-                                </option>
-                              ))}
-                            </select>
+                              options={channels.map((channel) => ({
+                                value: channel.id,
+                                label: channel.name,
+                              }))}
+                              placeholder="Search channels..."
+                            />
                           </label>
                           <label>
                             Message type
@@ -3029,21 +3077,20 @@ export const Dashboard = () => {
                         <div className="form-grid">
                           <label>
                             Channel
-                            <select
+                            <SearchableSelect
                               value={farewellSettings.channelId}
-                              onChange={(event) =>
+                              onChange={(value) =>
                                 setFarewellSettings((prev) => ({
                                   ...prev,
-                                  channelId: event.target.value,
+                                  channelId: value,
                                 }))
                               }
-                            >
-                              {channels.map((channel) => (
-                                <option key={channel.id} value={channel.id}>
-                                  {channel.name}
-                                </option>
-                              ))}
-                            </select>
+                              options={channels.map((channel) => ({
+                                value: channel.id,
+                                label: channel.name,
+                              }))}
+                              placeholder="Search channels..."
+                            />
                           </label>
                           <label>
                             Message type
@@ -3366,34 +3413,32 @@ export const Dashboard = () => {
                         <div className="form-grid split">
                           <label>
                             Channel
-                            <select
+                            <SearchableSelect
                               value={eventForm.channelId}
-                              onChange={(event) =>
-                                setEventForm((prev) => ({ ...prev, channelId: event.target.value }))
+                              onChange={(value) =>
+                                setEventForm((prev) => ({ ...prev, channelId: value }))
                               }
-                            >
-                              {channels.map((channel) => (
-                                <option key={channel.id} value={channel.id}>
-                                  {channel.name}
-                                </option>
-                              ))}
-                            </select>
+                              options={channels.map((channel) => ({
+                                value: channel.id,
+                                label: channel.name,
+                              }))}
+                              placeholder="Search channels..."
+                            />
                           </label>
                           <label>
                             Role (optional)
-                            <select
+                            <SearchableSelect
                               value={eventForm.roleId}
-                              onChange={(event) =>
-                                setEventForm((prev) => ({ ...prev, roleId: event.target.value }))
+                              onChange={(value) =>
+                                setEventForm((prev) => ({ ...prev, roleId: value }))
                               }
-                            >
-                              <option value="">None</option>
-                              {roles.map((role) => (
-                                <option key={role.id} value={role.id}>
-                                  {stripRolePrefix(role.name)}
-                                </option>
-                              ))}
-                            </select>
+                              options={roles.map((role) => ({
+                                value: role.id,
+                                label: stripRolePrefix(role.name),
+                              }))}
+                              placeholder="Search roles..."
+                              emptyLabel="None"
+                            />
                           </label>
                         </div>
                         <label>
@@ -3579,34 +3624,32 @@ export const Dashboard = () => {
                       <div className="form-grid split">
                         <label>
                           Channel
-                          <select
+                          <SearchableSelect
                             value={eventForm.channelId}
-                            onChange={(event) =>
-                              setEventForm((prev) => ({ ...prev, channelId: event.target.value }))
+                            onChange={(value) =>
+                              setEventForm((prev) => ({ ...prev, channelId: value }))
                             }
-                          >
-                            {channels.map((channel) => (
-                              <option key={channel.id} value={channel.id}>
-                                {channel.name}
-                              </option>
-                            ))}
-                          </select>
+                            options={channels.map((channel) => ({
+                              value: channel.id,
+                              label: channel.name,
+                            }))}
+                            placeholder="Search channels..."
+                          />
                         </label>
                         <label>
                           Role (optional)
-                          <select
+                          <SearchableSelect
                             value={eventForm.roleId}
-                            onChange={(event) =>
-                              setEventForm((prev) => ({ ...prev, roleId: event.target.value }))
+                            onChange={(value) =>
+                              setEventForm((prev) => ({ ...prev, roleId: value }))
                             }
-                          >
-                            <option value="">None</option>
-                            {roles.map((role) => (
-                              <option key={role.id} value={role.id}>
-                                {stripRolePrefix(role.name)}
-                              </option>
-                            ))}
-                          </select>
+                            options={roles.map((role) => ({
+                              value: role.id,
+                              label: stripRolePrefix(role.name),
+                            }))}
+                            placeholder="Search roles..."
+                            emptyLabel="None"
+                          />
                         </label>
                       </div>
                       <label>
@@ -3653,18 +3696,6 @@ export const Dashboard = () => {
                     Capture attendance on demand or schedule automatic snapshots.
                   </p>
                 </div>
-                <div className="section-actions">
-                  <Button
-                    variant="outline"
-                    onClick={handleVoicePresenceSave}
-                    disabled={voicePresenceSaving}
-                  >
-                    {voicePresenceSaving ? "Saving..." : "Save settings"}
-                  </Button>
-                  <Button onClick={handleVoicePresenceRun} disabled={voicePresenceRunning}>
-                    {voicePresenceRunning ? "Capturing..." : "Fetch presence"}
-                  </Button>
-                </div>
               </div>
 
               <div className="content-grid content-grid--presence">
@@ -3676,11 +3707,29 @@ export const Dashboard = () => {
                         Choose which voice channels to scan. Empty = all voice channels.
                       </p>
                     </div>
+                    <Button onClick={handleVoicePresenceRun} disabled={voicePresenceRunning}>
+                      {voicePresenceRunning ? "Capturing..." : "Fetch presence"}
+                    </Button>
+                  </div>
+                  <div className="form-grid">
+                    <label>
+                      Capture name
+                      <input
+                        value={voicePresenceSettings.manualName ?? ""}
+                        onChange={(event) =>
+                          setVoicePresenceSettings((prev) => ({
+                            ...prev,
+                            manualName: event.target.value,
+                          }))
+                        }
+                        placeholder="e.g. Weekly voice check"
+                      />
+                    </label>
                   </div>
                   {voiceChannels.length === 0 ? (
                     <p className="muted">No voice channels found on this server.</p>
                   ) : (
-                    <div className="presence-channel-grid">
+                    <div className="presence-channel-grid presence-channel-grid--scroll">
                       {voiceChannels.map((channel) => (
                         <label key={channel.id} className="presence-channel-option">
                           <input
@@ -3738,6 +3787,21 @@ export const Dashboard = () => {
                               Remove
                             </button>
                           </div>
+                          <div className="form-grid">
+                            <label>
+                              Schedule name
+                              <input
+                                value={schedule.name ?? ""}
+                                onChange={(event) =>
+                                  updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                    ...prev,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                placeholder="e.g. Saturday raid check"
+                              />
+                            </label>
+                          </div>
                           <div className="form-grid split">
                             <label>
                               Day of week
@@ -3786,7 +3850,7 @@ export const Dashboard = () => {
                             </label>
                             <span className="switch-label">Enabled</span>
                           </div>
-                          <div className="presence-channel-grid">
+                          <div className="presence-channel-grid presence-channel-grid--scroll">
                             {voiceChannels.map((channel) => (
                               <label key={channel.id} className="presence-channel-option">
                                 <input
@@ -3813,115 +3877,58 @@ export const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="content-grid content-grid--presence">
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>Presence stats</h3>
-                      <p className="muted">Based on the loaded snapshots.</p>
-                    </div>
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <h3>Presence history</h3>
+                    <p className="muted">All snapshots from manual and scheduled runs.</p>
                   </div>
-                  <div className="presence-stats-grid">
-                    <div>
-                      <span className="muted">Snapshots</span>
-                      <div className="stat">{presenceStats.totalSnapshots}</div>
-                    </div>
-                    <div>
-                      <span className="muted">Unique members</span>
-                      <div className="stat">{presenceStats.uniqueMembers}</div>
-                    </div>
-                  </div>
-                  {presenceStats.topMembers.length === 0 ? (
-                    <p className="muted">No attendance data yet.</p>
-                  ) : (
-                    <div className="presence-top-list">
-                      {presenceStats.topMembers.map((member) => (
-                        <div key={member.id} className="presence-top-row">
-                          <span>{member.name}</span>
-                          <span className="pill">{member.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>Presence history</h3>
-                      <p className="muted">Latest snapshots with details.</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => loadVoicePresenceLogs(true)}
-                      disabled={voicePresenceLogsLoading}
-                    >
-                      {voicePresenceLogsLoading ? "Refreshing..." : "Refresh"}
-                    </Button>
-                  </div>
-                  {voicePresenceLogs.length === 0 ? (
-                    <p className="muted">No snapshots stored yet.</p>
-                  ) : (
-                    <div className="presence-log-list">
-                      {voicePresenceLogs.map((log) => {
-                        const expanded = expandedPresenceLogId === log.id;
-                        return (
-                          <div key={log.id ?? log.createdAt} className="presence-log-card">
-                            <div className="presence-log-header">
-                              <div>
-                                <strong>{formatLogTime(log.createdAt ?? "")}</strong>
-                                <p className="muted">
-                                  {log.totalMembers} members · {log.totalChannels} channels ·{" "}
-                                  {log.source === "schedule" ? "Scheduled" : "Manual"}
-                                </p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                onClick={() =>
-                                  setExpandedPresenceLogId(expanded ? null : log.id ?? null)
-                                }
-                              >
-                                {expanded ? "Hide" : "Details"}
-                              </Button>
-                            </div>
-                            {expanded ? (
-                              <div className="presence-log-details">
-                                {log.channels.map((channel) => {
-                                  const members = log.members.filter(
-                                    (member) => member.channelId === channel.id
-                                  );
-                                  return (
-                                    <div key={channel.id} className="presence-channel-block">
-                                      <span className="muted">{channel.name}</span>
-                                      {members.length === 0 ? (
-                                        <span className="muted">No members</span>
-                                      ) : (
-                                        <div className="presence-member-list">
-                                          {members.map((member) => (
-                                            <span key={member.id} className="pill">
-                                              {member.name}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                   <Button
-                    variant="outline"
-                    onClick={() => loadVoicePresenceLogs(false)}
+                    variant="ghost"
+                    onClick={() => loadVoicePresenceLogs(true)}
                     disabled={voicePresenceLogsLoading}
                   >
-                    Load more
+                    {voicePresenceLogsLoading ? "Refreshing..." : "Refresh"}
                   </Button>
                 </div>
+                {voicePresenceLogs.length === 0 ? (
+                  <p className="muted">No snapshots stored yet.</p>
+                ) : (
+                  <div className="presence-log-table">
+                    {voicePresenceLogs.map((log) => {
+                      const name =
+                        log.name ||
+                        (log.source === "schedule"
+                          ? "Scheduled capture"
+                          : "Manual capture");
+                      return (
+                        <div key={log.id ?? log.createdAt} className="presence-log-row">
+                          <div>
+                            <strong>{name}</strong>
+                            <p className="muted">{formatLogTime(log.createdAt ?? "")}</p>
+                          </div>
+                          <div className="presence-log-meta">
+                            <span className="pill neutral">
+                              {log.source === "schedule" ? "Scheduled" : "Manual"}
+                            </span>
+                            <span className="muted">{log.totalChannels} channels</span>
+                            <span className="muted">{log.totalMembers} members</span>
+                          </div>
+                          <Button variant="ghost" onClick={() => setActivePresenceLog(log)}>
+                            Details
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => loadVoicePresenceLogs(false)}
+                  disabled={voicePresenceLogsLoading}
+                >
+                  Load more
+                </Button>
               </div>
             </section>
           )
@@ -4208,21 +4215,20 @@ export const Dashboard = () => {
                               <div className="form-grid split">
                                 <label>
                                   Channel
-                                  <select
+                                  <SearchableSelect
                                     value={message.channelId}
-                                    onChange={(event) =>
+                                    onChange={(value) =>
                                       updateRoleReactionMessage(message.key, (prev) => ({
                                         ...prev,
-                                        channelId: event.target.value,
+                                        channelId: value,
                                       }))
                                     }
-                                  >
-                                    {channels.map((channel) => (
-                                      <option key={channel.id} value={channel.id}>
-                                        {channel.name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    options={channels.map((channel) => ({
+                                      value: channel.id,
+                                      label: channel.name,
+                                    }))}
+                                    placeholder="Search channels..."
+                                  />
                                 </label>
                                 <label>
                                   Message type
@@ -4253,6 +4259,7 @@ export const Dashboard = () => {
                                       }))
                                     }
                                   />
+                                  <span className="muted">Emoji are supported in the message.</span>
                                 </label>
                               ) : (
                                 <>
@@ -4417,21 +4424,20 @@ export const Dashboard = () => {
                                       </div>
                                       <label>
                                         Role
-                                        <select
+                                        <SearchableSelect
                                           value={pair.roleId}
-                                          onChange={(event) =>
+                                          onChange={(value) =>
                                             updateRoleReactionPair(message.key, pairIndex, (prev) => ({
                                               ...prev,
-                                              roleId: event.target.value,
+                                              roleId: value,
                                             }))
                                           }
-                                        >
-                                          {roles.map((role) => (
-                                            <option key={role.id} value={role.id}>
-                                              {stripRolePrefix(role.name)}
-                                            </option>
-                                          ))}
-                                        </select>
+                                          options={roles.map((role) => ({
+                                            value: role.id,
+                                            label: stripRolePrefix(role.name),
+                                          }))}
+                                          placeholder="Search roles..."
+                                        />
                                       </label>
                                       <button
                                         type="button"
@@ -4712,21 +4718,21 @@ export const Dashboard = () => {
                   <div className="form-grid">
                     <label>
                       Role to assign
-                      <select
+                      <SearchableSelect
                         value={autoroleSettings.roleId}
-                        onChange={(event) =>
+                        onChange={(value) =>
                           setAutoroleSettings((prev) => ({
                             ...prev,
-                            roleId: event.target.value,
+                            roleId: value,
                           }))
                         }
-                      >
-                        {roles.map((role) => (
-                          <option key={role.id} value={role.id}>
-                            {stripRolePrefix(role.name)}
-                          </option>
-                        ))}
-                      </select>
+                        options={roles.map((role) => ({
+                          value: role.id,
+                          label: stripRolePrefix(role.name),
+                        }))}
+                        placeholder="Search roles..."
+                        emptyLabel="Select role"
+                      />
                     </label>
                     <p className="muted">The bot must have permission to manage roles.</p>
                   </div>
@@ -4749,25 +4755,199 @@ export const Dashboard = () => {
                   <h1>Quick toggles</h1>
                   <p className="muted">Small switches that change the bot behavior instantly.</p>
                 </div>
+                <Button variant="outline" onClick={handleWarthogSave} disabled={warthogSaving}>
+                  {warthogSaving ? "Saving..." : "Save Warthog"}
+                </Button>
               </div>
               <div className="card">
                 <div className="switch-row">
                   <label className="switch-control">
                     <input
                       type="checkbox"
-                      checked={warthogEnabled}
+                      checked={warthogSettings.enabled}
                       onChange={handleWarthogToggle}
-                      disabled={warthogSaving}
                       aria-label="Enable Warthog mode"
                     />
                   </label>
-                  <span className="switch-label">
-                    {warthogSaving ? "Updating..." : "Enable Warthog mode"}
-                  </span>
+                  <span className="switch-label">Enable Warthog mode</span>
                 </div>
+                {warthogSettings.enabled ? (
+                  <div className="form-grid">
+                    <div className="switch-row">
+                      <label className="switch-control">
+                        <input
+                          type="checkbox"
+                          checked={warthogSettings.roleLock}
+                          onChange={() =>
+                            setWarthogSettings((prev) => ({
+                              ...prev,
+                              roleLock: !prev.roleLock,
+                            }))
+                          }
+                          aria-label="Restrict Warthog to specific roles"
+                        />
+                      </label>
+                      <span className="switch-label">Restrict usage to selected roles</span>
+                    </div>
+
+                    {warthogSettings.roleLock ? (
+                      <>
+                        <label>
+                          Search roles
+                          <input
+                            value={warthogRoleQuery}
+                            onChange={(event) => setWarthogRoleQuery(event.target.value)}
+                            placeholder="Type a role name..."
+                          />
+                        </label>
+                        {filteredWarthogRoles.length === 0 ? (
+                          <p className="muted">No roles match your search.</p>
+                        ) : (
+                          <div className="presence-channel-grid presence-channel-grid--scroll">
+                            {filteredWarthogRoles.map((role) => (
+                              <label key={role.id} className="presence-channel-option">
+                                <input
+                                  type="checkbox"
+                                  checked={warthogSettings.allowedRoles.includes(role.id)}
+                                  onChange={() =>
+                                    setWarthogSettings((prev) => ({
+                                      ...prev,
+                                      allowedRoles: toggleSelection(
+                                        prev.allowedRoles,
+                                        role.id
+                                      ),
+                                    }))
+                                  }
+                                />
+                                <span>{stripRolePrefix(role.name)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="muted">Anyone with access to the command can use Warthog.</p>
+                    )}
+
+                    <div className="form-grid">
+                      <label>
+                        Whitelist user IDs
+                        <input
+                          value={warthogWhitelistInput}
+                          onChange={(event) => setWarthogWhitelistInput(event.target.value)}
+                          placeholder="e.g. 1234567890, 9876543210"
+                        />
+                      </label>
+                      <Button variant="outline" onClick={addWarthogWhitelist}>
+                        Add to whitelist
+                      </Button>
+                    </div>
+
+                    <div className="admin-user-list">
+                      {warthogSettings.whitelist.length === 0 ? (
+                        <p className="muted">No protected users yet.</p>
+                      ) : (
+                        warthogSettings.whitelist.map((userId) => (
+                          <div key={userId} className="admin-user-row">
+                            <span>{userId}</span>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() => removeWarthogWhitelist(userId)}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <label>
+                      Bounce message
+                      <input
+                        value={warthogSettings.bounceMessage}
+                        onChange={(event) =>
+                          setWarthogSettings((prev) => ({
+                            ...prev,
+                            bounceMessage: event.target.value,
+                          }))
+                        }
+                        placeholder="Warthog bounced off this user."
+                      />
+                    </label>
+                    <label>
+                      Bounce GIF URL
+                      <input
+                        value={warthogSettings.bounceGif}
+                        onChange={(event) =>
+                          setWarthogSettings((prev) => ({
+                            ...prev,
+                            bounceGif: event.target.value,
+                          }))
+                        }
+                        placeholder="https://..."
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <p className="muted">Warthog is disabled on this server.</p>
+                )}
               </div>
             </section>
           )
+        ) : null}
+
+        {activePresenceLog ? (
+          <div
+            className="presence-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setActivePresenceLog(null)}
+          >
+            <div className="presence-modal" onClick={(event) => event.stopPropagation()}>
+              <div className="presence-modal-header">
+                <div>
+                  <p className="eyebrow">Presence details</p>
+                  <h2>{activePresenceLog.name || "Presence snapshot"}</h2>
+                  <p className="muted">
+                    {formatLogTime(activePresenceLog.createdAt ?? "")} ·{" "}
+                    {activePresenceLog.source === "schedule" ? "Scheduled" : "Manual"} ·{" "}
+                    {activePresenceLog.totalChannels} channels · {activePresenceLog.totalMembers} members
+                  </p>
+                </div>
+                <Button variant="ghost" onClick={() => setActivePresenceLog(null)}>
+                  Close
+                </Button>
+              </div>
+              <div className="presence-detail-list">
+                {activePresenceLog.channels.length === 0 ? (
+                  <p className="muted">No channels captured.</p>
+                ) : (
+                  activePresenceLog.channels.map((channel) => {
+                    const members = activePresenceLog.members.filter(
+                      (member) => member.channelId === channel.id
+                    );
+                    return (
+                      <div key={channel.id} className="presence-detail-block">
+                        <span className="muted">{channel.name}</span>
+                        {members.length === 0 ? (
+                          <span className="muted">No members</span>
+                        ) : (
+                          <div className="presence-member-list">
+                            {members.map((member) => (
+                              <span key={member.id} className="pill">
+                                {member.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
         ) : null}
 
         {hasUnsavedChanges ? (
