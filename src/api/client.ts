@@ -672,19 +672,20 @@ const normalizeEmojiTriggerSettings = (payload: unknown): EmojiTriggerSettings =
 
 const normalizeVoicePresenceSettings = (payload: unknown): VoicePresenceSettings => {
   const raw = isRecord(payload)
-    ? (payload.settings as Record<string, unknown> | undefined) ??
-      (payload.data as Record<string, unknown> | undefined) ??
-      payload
+    ? ((payload.settings as Record<string, unknown> | undefined) ??
+        (payload.data as Record<string, unknown> | undefined) ??
+        payload)
     : null;
 
   if (!isRecord(raw)) {
     return { ...defaultVoicePresenceSettings };
   }
 
-  const manualChannelIds = Array.isArray(raw.manualChannelIds ?? raw.manual_channel_ids)
-    ? (raw.manualChannelIds ?? raw.manual_channel_ids)
-        .map((item) => asString(item))
-        .filter((value) => value)
+  const manualChannelIdsRaw = raw.manualChannelIds ?? raw.manual_channel_ids;
+  const manualChannelIds = Array.isArray(manualChannelIdsRaw)
+    ? manualChannelIdsRaw
+        .map((item: unknown) => asString(item))
+        .filter((value): value is string => Boolean(value))
     : [];
 
   const schedulesRaw = Array.isArray(raw.schedules) ? raw.schedules : [];
@@ -695,11 +696,14 @@ const normalizeVoicePresenceSettings = (payload: unknown): VoicePresenceSettings
       enabled: asBoolean(item.enabled, true),
       dayOfWeek: Number(item.dayOfWeek ?? item.day_of_week ?? 0),
       time: asString(item.time ?? "00:00"),
-      channelIds: Array.isArray(item.channelIds ?? item.channel_ids)
-        ? (item.channelIds ?? item.channel_ids)
-            .map((value) => asString(value))
-            .filter((value) => value)
-        : [],
+      channelIds: (() => {
+        const channelIdsRaw = item.channelIds ?? item.channel_ids;
+        return Array.isArray(channelIdsRaw)
+          ? channelIdsRaw
+              .map((value: unknown) => asString(value))
+              .filter((value): value is string => Boolean(value))
+          : [];
+      })(),
       lastRun: asString(item.lastRun ?? item.last_run, "") || null,
     }))
     .filter((schedule) => schedule.id && Number.isFinite(schedule.dayOfWeek));

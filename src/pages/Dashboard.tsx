@@ -73,7 +73,10 @@ type TriggerRow = {
   images: TriggerImageRow[];
 };
 
-type RoleReactionMessageDraft = RoleReactionMessage & { key: string };
+type RoleReactionMessageDraft = Omit<RoleReactionMessage, "embed"> & {
+  key: string;
+  embed: NonNullable<RoleReactionMessage["embed"]>;
+};
 
 type TriggerImageRow = {
   id: string;
@@ -294,16 +297,18 @@ const emptyVoicePresenceSettings: VoicePresenceSettings = {
   schedules: [],
 };
 
+const roleReactionEmbedDefaults: NonNullable<RoleReactionMessage["embed"]> = {
+  title: "Choose your role",
+  description: "React below to receive a role.",
+  color: "#2f7cff",
+};
+
 const emptyRoleReactionMessage: RoleReactionMessageDraft = {
   key: "",
   channelId: "",
   type: "text",
   message: "React below to receive a role.",
-  embed: {
-    title: "Choose your role",
-    description: "React below to receive a role.",
-    color: "#2f7cff",
-  },
+  embed: roleReactionEmbedDefaults,
   pairs: [],
   messageId: "",
 };
@@ -406,7 +411,7 @@ const buildRoleReactionMessages = (
     channelId: message.channelId || fallbackChannel,
     type: message.type === "embed" ? "embed" : "text",
     embed: {
-      ...emptyRoleReactionMessage.embed,
+      ...roleReactionEmbedDefaults,
       ...(message.embed ?? {}),
     },
     pairs: Array.isArray(message.pairs) ? message.pairs : [],
