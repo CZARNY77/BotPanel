@@ -5,45 +5,30 @@ import { getInviteUrl } from "../api/client";
 import { Button } from "../components/Button";
 import logo from "../assets/logo.png";
 
-const highlights = [
+const features = [
   {
-    title: "Welcome & Farewell flows",
-    description: "Build friendly first impressions with optional embeds and smart toggles.",
+    title: "Greetings & Farewells",
+    description: "Welcome or send-off messages with text or embeds.",
   },
   {
     title: "Event creator",
-    description: "Schedule Discord-style RSVPs with reminders, roles, and repeat cadence.",
+    description: "Discord-style RSVP events with reminders and pings.",
   },
   {
-    title: "Voice presence snapshots",
-    description: "Capture voice attendance manually or automate weekly check-ins.",
+    title: "Voice presence",
+    description: "Manual or scheduled attendance snapshots for voice channels.",
   },
   {
     title: "Emoji triggers",
-    description: "Map emojis to multiple images and send a random reply.",
+    description: "Respond to emojis with a random image.",
   },
   {
     title: "Role reactions",
-    description: "Let members self-assign roles using reaction messages.",
+    description: "Self-assign roles from reaction messages.",
   },
   {
-    title: "Auto role + utilities",
-    description: "Instantly assign roles and manage extra bot toggles in one place.",
-  },
-];
-
-const capabilityGroups = [
-  {
-    title: "Engage members",
-    items: ["Greetings & farewells", "Emoji triggers", "Role reactions"],
-  },
-  {
-    title: "Organize events",
-    items: ["RSVP events", "Role pings", "Repeat schedules"],
-  },
-  {
-    title: "Automate routines",
-    items: ["Auto roles", "Voice presence", "Warthog controls"],
+    title: "Auto roles + tools",
+    description: "Assign roles on join and manage extra toggles.",
   },
 ];
 
@@ -85,89 +70,52 @@ export const Landing = () => {
   }, [user, login]);
 
   return (
-    <div className="landing">
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="hero-brand">
-            <img src={logo} alt="ConqBot logo" />
-            <span>ConqBot</span>
-          </div>
-          <p className="eyebrow">Discord control panel</p>
-          <h1>Run your Discord servers with one focused command deck.</h1>
-          <p className="muted">
-            Automations, event planning, and member engagement tools, all in one consistent panel.
-          </p>
-          <div className="hero-actions">
-            {heroCta}
-            <Button variant="outline" onClick={handleInvite} disabled={inviteLoading}>
-              {inviteLoading ? "Opening..." : "Add ConqBot to Discord"}
-            </Button>
-            <a className="btn btn-outline" href="#features">
-              View features
-            </a>
-          </div>
-          {inviteError ? <p className="muted">{inviteError}</p> : null}
-        </div>
-        <div className="hero-showcase">
-          <div className="hero-card hero-card--panel">
-            <div className="hero-card-header">
-              <span className="pill info">Live panel</span>
-              <span className="muted">Last sync 2m ago</span>
+    <div className="landing landing--simple">
+      <section className="landing-hero">
+        <div className="landing-container">
+          <div className="landing-card">
+            <div className="hero-brand">
+              <img src={logo} alt="ConqBot logo" />
+              <span>ConqBot Panel</span>
             </div>
-            <div className="hero-module-list">
-              {capabilityGroups.map((group) => (
-                <div key={group.title} className="hero-module">
-                  <strong>{group.title}</strong>
-                  <span className="muted">{group.items.join(" · ")}</span>
-                </div>
-              ))}
+            <h1>One panel to run your Discord servers.</h1>
+            <p className="muted">
+              Configure welcomes, events, voice presence, and role tools from a clean dashboard.
+            </p>
+            <div className="hero-actions">
+              {heroCta}
+              <Button variant="outline" onClick={handleInvite} disabled={inviteLoading}>
+                {inviteLoading ? "Opening..." : "Add ConqBot"}
+              </Button>
             </div>
-          </div>
-          <div className="hero-card hero-card--stats">
-            <h3>Quick glance</h3>
-            <div className="hero-stat-grid">
-              <div>
-                <span className="muted">Servers</span>
-                <strong>All connected</strong>
-              </div>
-              <div>
-                <span className="muted">Event planner</span>
-                <strong>Ready to publish</strong>
-              </div>
-              <div>
-                <span className="muted">Automation</span>
-                <strong>Auto role active</strong>
-              </div>
-            </div>
+            {inviteError ? <p className="muted">{inviteError}</p> : null}
           </div>
         </div>
       </section>
 
-      <section id="features" className="feature-grid">
-        {highlights.map((feature) => (
-          <article key={feature.title} className="feature-card">
-            <h3>{feature.title}</h3>
-            <p className="muted">{feature.description}</p>
-          </article>
-        ))}
+      <section id="features" className="landing-section">
+        <div className="landing-container">
+          <h2>What you can do</h2>
+          <div className="feature-list">
+            {features.map((feature) => (
+              <article key={feature.title} className="feature-item">
+                <h3>{feature.title}</h3>
+                <p className="muted">{feature.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="cta-banner">
-        <div>
-          <h2>Ready to tune your server?</h2>
-          <p className="muted">Login and start customizing ConqBot in seconds.</p>
+      <footer className="landing-footer">
+        <div className="landing-container landing-footer-inner">
+          <span className="muted">ConqBot Panel</span>
+          <div className="footer-links">
+            <Link to="/privacy-policy">Privacy Policy</Link>
+            <Link to="/terms-of-service">Terms of Service</Link>
+          </div>
         </div>
-        <div className="hero-actions">
-          {heroCta}
-          <Button
-            variant="outline"
-            onClick={handleInvite}
-            disabled={inviteLoading}
-          >
-            {inviteLoading ? "Opening..." : "Add ConqBot"}
-          </Button>
-        </div>
-      </section>
+      </footer>
     </div>
   );
 };

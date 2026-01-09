@@ -334,7 +334,83 @@ p {
 
 .landing {
   display: grid;
-  gap: 48px;
+  gap: 32px;
+  padding: 24px 0 48px;
+}
+
+.landing--simple {
+  min-height: 80vh;
+}
+
+.landing-container {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  padding: 0 24px;
+  display: grid;
+  gap: 24px;
+}
+
+.landing-hero {
+  padding-top: 24px;
+}
+
+.landing-card {
+  border-radius: 24px;
+  border: 1px solid hsl(var(--border));
+  background:
+    radial-gradient(circle at top right, hsl(var(--primary) / 0.15), transparent 55%),
+    hsl(var(--card));
+  padding: 32px;
+  display: grid;
+  gap: 16px;
+  box-shadow: 0 26px 50px hsl(var(--background) / 0.45);
+}
+
+.landing-section h2 {
+  margin: 0;
+}
+
+.feature-list {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.feature-item {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  display: grid;
+  gap: 8px;
+}
+
+.landing-footer {
+  border-top: 1px solid hsl(var(--border));
+  padding: 24px 0 0;
+}
+
+.landing-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9rem;
+}
+
+.footer-links a:hover {
+  color: hsl(var(--foreground));
 }
 
 .policy-page {
@@ -1749,24 +1825,27 @@ textarea {
 
 .composer-input {
   position: relative;
+  width: 100%;
+  min-width: 0;
 }
 
 .composer-input textarea {
-  padding-right: 90px;
+  padding-right: 52px;
 }
 
 .composer-corner {
   position: absolute;
   top: 8px;
-  right: 8px;
+  right: 6px;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   z-index: 2;
 }
 
 .icon-button {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 10px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--muted) / 0.35);
@@ -1785,9 +1864,15 @@ textarea {
 .composer-popover {
   position: absolute;
   right: 0;
-  top: calc(100% + 6px);
-  z-index: 12;
+  bottom: calc(100% + 6px);
+  z-index: 60;
   width: 240px;
+}
+
+.composer-input .emoji-select-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  z-index: 60;
 }
 
 .trigger-summary-list {
@@ -2252,9 +2337,11 @@ textarea {
   position: fixed;
   inset: 0;
   background: hsl(var(--foreground) / 0.45);
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow-y: auto;
   z-index: 40;
 }
 
@@ -2266,8 +2353,7 @@ textarea {
   padding: 24px;
   display: grid;
   gap: 18px;
-  max-height: 90vh;
-  overflow: auto;
+  overflow: visible;
   box-shadow: 0 20px 50px hsl(var(--foreground) / 0.25);
 }
 
@@ -2409,7 +2495,7 @@ textarea {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 10;
+  z-index: 60;
   width: 220px;
   max-height: 220px;
   overflow: auto;
