@@ -452,6 +452,8 @@ const fromPanelDate = (value: string) => {
   return `${year}-${month}-${day}`;
 };
 const stripRolePrefix = (value: string) => (value.startsWith("@") ? value.slice(1) : value);
+const formatVoiceChannelName = (value: string) =>
+  value.replace(/^voice\s*-\s*/i, "").trim() || value;
 
 const extractImageUrl = (value: string) => {
   const match = value.match(/https?:\/\/\S+\.(?:png|jpe?g|gif|webp)(?:\?\S+)?/i);
@@ -697,6 +699,7 @@ export const Dashboard = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [serverReloadToken, setServerReloadToken] = useState(0);
   const activeServerIdRef = useRef<string | null>(null);
+  const [greetingTab, setGreetingTab] = useState<"welcome" | "farewell">("welcome");
 
   const [metadata, setMetadata] = useState<ServerMetadata>(emptyMetadata);
   const [welcomeSettings, setWelcomeSettings] = useState<WelcomeSettings>(emptyWelcome);
@@ -743,6 +746,7 @@ export const Dashboard = () => {
   const [voicePresenceLogDeletingId, setVoicePresenceLogDeletingId] = useState<string | null>(null);
   const [activePresenceLog, setActivePresenceLog] = useState<VoicePresenceLog | null>(null);
   const [presenceTab, setPresenceTab] = useState<"manual" | "schedule" | "history">("manual");
+  const [activePresenceScheduleId, setActivePresenceScheduleId] = useState<string | null>(null);
 
   const [activeRoleEmojiPickerId, setActiveRoleEmojiPickerId] = useState<string | null>(null);
   const [roleEmojiSearch, setRoleEmojiSearch] = useState("");
@@ -751,6 +755,10 @@ export const Dashboard = () => {
     useState<RoleReactionSettings>(emptyRoleReactions);
   const [roleReactionMessages, setRoleReactionMessages] = useState<RoleReactionMessageDraft[]>([]);
   const [activeRoleReactionKey, setActiveRoleReactionKey] = useState<string | null>(null);
+  const [roleMentionPick, setRoleMentionPick] = useState("");
+  const [messageEmojiOpen, setMessageEmojiOpen] = useState(false);
+  const [messageEmojiSearch, setMessageEmojiSearch] = useState("");
+  const [messageEmojiTarget, setMessageEmojiTarget] = useState<"text" | "embed">("text");
   const [roleReactionsSaving, setRoleReactionsSaving] = useState(false);
   const [roleReactionsBaseline, setRoleReactionsBaseline] =
     useState<RoleReactionSettings>(emptyRoleReactions);
@@ -878,10 +886,15 @@ export const Dashboard = () => {
     setVoicePresenceLogDeletingId(null);
     setActivePresenceLog(null);
     setPresenceTab("manual");
+    setActivePresenceScheduleId(null);
     setRoleReactions(emptyRoleReactions);
     setRoleReactionMessages([]);
     setRoleReactionsBaseline(emptyRoleReactions);
     setActiveRoleReactionKey(null);
+    setRoleMentionPick("");
+    setMessageEmojiOpen(false);
+    setMessageEmojiSearch("");
+    setMessageEmojiTarget("text");
     setWarthogSettings(emptyWarthog);
     setWarthogBaseline(emptyWarthog);
     setWarthogRolePick("");
@@ -910,6 +923,10 @@ export const Dashboard = () => {
     setActiveRoleReactionKey(null);
     setActiveRoleEmojiPickerId(null);
     setRoleEmojiSearch("");
+    setActivePresenceScheduleId(null);
+    setMessageEmojiOpen(false);
+    setMessageEmojiSearch("");
+    setRoleMentionPick("");
   }, [activeSection]);
 
   useEffect(() => {
@@ -926,6 +943,8 @@ export const Dashboard = () => {
         setActiveRoleEmojiPickerId(null);
         setEmojiSearch("");
         setRoleEmojiSearch("");
+        setMessageEmojiOpen(false);
+        setMessageEmojiSearch("");
       }
     };
     document.addEventListener("click", handleClick);
@@ -1481,12 +1500,13 @@ export const Dashboard = () => {
       return;
     }
     if (hasUnsavedChanges) {
-      setError("Save or discard your changes before switching servers.");
+      setError("Save or cancel your changes before switching servers.");
       return;
     }
     setLoaded(emptyLoadedState);
     setSectionLoading(emptyLoadingState);
     setActiveServerId(serverId);
+    activeServerIdRef.current = serverId;
   };
 
   const handleSectionSelect = (section: SectionKey) => {
@@ -1494,7 +1514,7 @@ export const Dashboard = () => {
       return;
     }
     if (hasUnsavedChanges) {
-      setError("Save or discard your changes before switching sections.");
+      setError("Save or cancel your changes before switching sections.");
       return;
     }
     setActiveSection(section);
@@ -1945,12 +1965,13 @@ export const Dashboard = () => {
   };
 
   const addVoicePresenceSchedule = () => {
+    const scheduleId = createId();
     setVoicePresenceSettings((prev) => ({
       ...prev,
       schedules: [
         ...prev.schedules,
         {
-          id: createId(),
+          id: scheduleId,
           name: "",
           enabled: true,
           dayOfWeek: 0,
@@ -1960,6 +1981,7 @@ export const Dashboard = () => {
         },
       ],
     }));
+    setActivePresenceScheduleId(scheduleId);
   };
 
   const removeVoicePresenceSchedule = (scheduleId: string) => {
@@ -1967,6 +1989,13 @@ export const Dashboard = () => {
       ...prev,
       schedules: prev.schedules.filter((schedule) => schedule.id !== scheduleId),
     }));
+    if (activePresenceScheduleId === scheduleId) {
+      setActivePresenceScheduleId(null);
+    }
+  };
+
+  const closePresenceScheduleModal = () => {
+    setActivePresenceScheduleId(null);
   };
 
   const handleVoicePresenceSave = async () => {
@@ -2101,6 +2130,61 @@ export const Dashboard = () => {
       ...message,
       pairs: message.pairs.filter((_, pairIndex) => pairIndex !== index),
     }));
+  };
+
+  const formatEmojiToken = (emoji: EmojiOption) => {
+    const hasCustomId = Boolean(emoji.url) || /^\d+$/.test(emoji.id);
+    if (!hasCustomId) {
+      return emoji.id;
+    }
+    const name = emoji.name || "emoji";
+    const animated = emoji.url?.toLowerCase().includes(".gif");
+    return `<${animated ? "a" : ""}:${name}:${emoji.id}>`;
+  };
+
+  const insertRoleReactionToken = (
+    messageKey: string,
+    token: string,
+    target: "text" | "embed"
+  ) => {
+    updateRoleReactionMessage(messageKey, (message) => {
+      if (target === "text") {
+        return { ...message, message: `${message.message}${token}` };
+      }
+      const description = message.embed?.description ?? message.message;
+      const nextDescription = `${description}${token}`;
+      return {
+        ...message,
+        message: nextDescription,
+        embed: {
+          ...message.embed,
+          title: message.embed?.title ?? roleReactionEmbedDefaults.title,
+          description: nextDescription,
+          color: message.embed?.color ?? roleReactionEmbedDefaults.color,
+        },
+      };
+    });
+  };
+
+  const handleRoleMentionInsert = (
+    messageKey: string,
+    roleId: string,
+    target: "text" | "embed"
+  ) => {
+    if (!roleId) {
+      setRoleMentionPick("");
+      return;
+    }
+    insertRoleReactionToken(messageKey, `<@&${roleId}>`, target);
+    setRoleMentionPick("");
+  };
+
+  const toggleMessageEmojiPicker = (target: "text" | "embed") => {
+    setMessageEmojiTarget(target);
+    setMessageEmojiOpen((prev) => (target === messageEmojiTarget ? !prev : true));
+    setMessageEmojiSearch("");
+    setActiveEmojiPickerId(null);
+    setActiveRoleEmojiPickerId(null);
   };
 
   const handleRoleReactionsSave = async () => {
@@ -2354,6 +2438,14 @@ export const Dashboard = () => {
     [roleReactionMessages, activeRoleReactionKey]
   );
 
+  const activePresenceSchedule = useMemo(
+    () =>
+      voicePresenceSettings.schedules.find(
+        (schedule) => schedule.id === activePresenceScheduleId
+      ) ?? null,
+    [voicePresenceSettings.schedules, activePresenceScheduleId]
+  );
+
   const roleEmojiOptions = useMemo(() => {
     return [...emojiOptions, ...defaultEmojiOptions];
   }, [emojiOptions]);
@@ -2422,6 +2514,29 @@ export const Dashboard = () => {
     );
   }, [roleEmojiQuery]);
 
+  const messageEmojiQuery = messageEmojiSearch.trim().toLowerCase();
+  const filteredMessageCustomEmojis = useMemo(() => {
+    if (!messageEmojiQuery) {
+      return emojiOptions;
+    }
+    return emojiOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(messageEmojiQuery) ||
+        option.id.toLowerCase().includes(messageEmojiQuery)
+    );
+  }, [emojiOptions, messageEmojiQuery]);
+
+  const filteredMessageDefaultEmojis = useMemo(() => {
+    if (!messageEmojiQuery) {
+      return defaultEmojiOptions;
+    }
+    return defaultEmojiOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(messageEmojiQuery) ||
+        option.id.toLowerCase().includes(messageEmojiQuery)
+    );
+  }, [messageEmojiQuery]);
+
   const welcomeLoading =
     !loaded.welcome ||
     !loaded.farewell ||
@@ -2447,8 +2562,6 @@ export const Dashboard = () => {
 
   const welcomeDirty = loaded.welcome && !isEqual(welcomeSettings, welcomeBaseline);
   const farewellDirty = loaded.farewell && !isEqual(farewellSettings, farewellBaseline);
-  const eventFormDirty =
-    !isEqual(eventForm, eventFormBaseline) || editingEventId !== eventBaselineEditingId;
   const emojiPendingUpload = emojiRows.some((row) =>
     row.images.some((image) => image.uploadFile || image.uploading)
   );
@@ -2458,7 +2571,8 @@ export const Dashboard = () => {
       !isEqual(normalizeEmojiRows(emojiRows), emojiBaseline.triggers) ||
       emojiPendingUpload);
   const voicePresenceDirty =
-    loaded.presence && !isEqual(voicePresenceSettings, voicePresenceBaseline);
+    loaded.presence &&
+    !isEqual(voicePresenceSettings.schedules, voicePresenceBaseline.schedules);
   const roleReactionComparable: RoleReactionSettings = {
     enabled: roleReactions.enabled,
     messages: roleReactionMessages.map((message) => ({
@@ -2479,9 +2593,6 @@ export const Dashboard = () => {
   const hasUnsavedChanges = (() => {
     if (activeSection === "welcome") {
       return welcomeDirty || farewellDirty;
-    }
-    if (activeSection === "events") {
-      return eventFormDirty;
     }
     if (activeSection === "emoji") {
       return emojiDirty;
@@ -2582,6 +2693,7 @@ export const Dashboard = () => {
     }
     if (activeSection === "presence") {
       setVoicePresenceSettings(voicePresenceBaseline);
+      setActivePresenceScheduleId(null);
       return;
     }
     if (activeSection === "role-reactions") {
@@ -3119,17 +3231,31 @@ export const Dashboard = () => {
                   <p className="muted">Toggle welcome or farewell messages and tailor the content.</p>
                 </div>
               </div>
+              <div className="tab-row greeting-tabs">
+                <button
+                  type="button"
+                  className={`tab-button ${greetingTab === "welcome" ? "active" : ""}`}
+                  onClick={() => setGreetingTab("welcome")}
+                >
+                  Welcome
+                </button>
+                <button
+                  type="button"
+                  className={`tab-button ${greetingTab === "farewell" ? "active" : ""}`}
+                  onClick={() => setGreetingTab("farewell")}
+                >
+                  Farewell
+                </button>
+              </div>
               <div className="content-grid content-grid--wide-preview">
                 <div className="card-stack">
-                  <div className="card">
+                  {greetingTab === "welcome" ? (
+                    <div className="card">
                     <div className="card-header">
                       <div>
                         <h3>Welcome message</h3>
                         <p className="muted">Greet new members with an automated message.</p>
                       </div>
-                      <Button onClick={handleWelcomeSave} disabled={welcomeSaving}>
-                        {welcomeSaving ? "Saving..." : "Save welcome"}
-                      </Button>
                     </div>
                     <div className="switch-row">
                       <label className="switch-control">
@@ -3280,16 +3406,15 @@ export const Dashboard = () => {
                       <p className="muted">Welcome messages are currently disabled.</p>
                     )}
                   </div>
+                  ) : null}
 
-                  <div className="card">
+                  {greetingTab === "farewell" ? (
+                    <div className="card">
                     <div className="card-header">
                       <div>
                         <h3>Farewell message</h3>
                         <p className="muted">Say goodbye automatically when members leave.</p>
                       </div>
-                      <Button onClick={handleFarewellSave} disabled={farewellSaving}>
-                        {farewellSaving ? "Saving..." : "Save farewell"}
-                      </Button>
                     </div>
                     <div className="switch-row">
                       <label className="switch-control">
@@ -3440,10 +3565,12 @@ export const Dashboard = () => {
                       <p className="muted">Farewell messages are currently disabled.</p>
                     )}
                   </div>
+                  ) : null}
                 </div>
 
                 <div className="card-stack">
-                  <div className="card discord-preview">
+                  {greetingTab === "welcome" ? (
+                    <div className="card discord-preview">
                     <p className="muted">Welcome preview</p>
                     <div className="discord-message">
                       <div className="discord-avatar">
@@ -3503,8 +3630,10 @@ export const Dashboard = () => {
                     </div>
                     <span className="muted">Sending to {welcomeChannelLabel}</span>
                   </div>
+                  ) : null}
 
-                  <div className="card discord-preview">
+                  {greetingTab === "farewell" ? (
+                    <div className="card discord-preview">
                     <p className="muted">Farewell preview</p>
                     <div className="discord-message">
                       <div className="discord-avatar">
@@ -3564,6 +3693,7 @@ export const Dashboard = () => {
                     </div>
                     <span className="muted">Sending to {farewellChannelLabel}</span>
                   </div>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -3694,6 +3824,7 @@ export const Dashboard = () => {
                       </div>
                       <div className="form-actions">
                         <Button onClick={handleCreateEvent} disabled={eventSaving}>
+                          {!eventSaving ? <span className="btn-icon" aria-hidden="true">+</span> : null}
                           {eventSaving ? "Saving..." : "Create event"}
                         </Button>
                       </div>
@@ -3733,7 +3864,7 @@ export const Dashboard = () => {
                               <span className="muted">Ping:</span>
                               <button
                                 type="button"
-                                className="btn btn-outline"
+                                className="btn btn-outline ping-button ping-unchecked"
                                 onClick={() => handlePingEvent(eventItem.id, "unchecked")}
                                 disabled={isPinging || !hasRole}
                                 title={hasRole ? "Ping members without a signup." : "Set a role to use this ping."}
@@ -3744,7 +3875,7 @@ export const Dashboard = () => {
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-outline"
+                                className="btn btn-outline ping-button ping-tentative"
                                 onClick={() => handlePingEvent(eventItem.id, "tentative")}
                                 disabled={isPinging}
                               >
@@ -3754,7 +3885,7 @@ export const Dashboard = () => {
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-outline"
+                                className="btn btn-outline ping-button ping-declined"
                                 onClick={() => handlePingEvent(eventItem.id, "declined")}
                                 disabled={isPinging}
                               >
@@ -3795,9 +3926,6 @@ export const Dashboard = () => {
                         <p className="eyebrow">Edit event</p>
                         <h2>Update event details</h2>
                       </div>
-                      <Button variant="ghost" onClick={handleCancelEdit}>
-                        Close
-                      </Button>
                     </div>
                     <div className="form-grid">
                       <label>
@@ -3982,12 +4110,12 @@ export const Dashboard = () => {
                           />
                         </label>
                       </div>
-                      {voiceChannels.length === 0 ? (
-                        <p className="muted">No voice channels found on this server.</p>
-                      ) : (
-                        <div className="presence-channel-grid presence-channel-grid--scroll">
-                          {voiceChannels.map((channel) => (
-                            <label key={channel.id} className="presence-channel-option">
+                {voiceChannels.length === 0 ? (
+                  <p className="muted">No voice channels found on this server.</p>
+                ) : (
+                  <div className="presence-channel-grid presence-channel-grid--scroll">
+                    {voiceChannels.map((channel) => (
+                      <label key={channel.id} className="presence-channel-option">
                               <input
                                 type="checkbox"
                                 checked={voicePresenceSettings.manualChannelIds.includes(channel.id)}
@@ -4001,7 +4129,7 @@ export const Dashboard = () => {
                                   }))
                                 }
                               />
-                              <span>{channel.name}</span>
+                              <span>{formatVoiceChannelName(channel.name)}</span>
                             </label>
                           ))}
                         </div>
@@ -4012,7 +4140,7 @@ export const Dashboard = () => {
 
                 {presenceTab === "schedule" ? (
                   <div className="presence-pane">
-                    <div className="card">
+                    <div className="card card--narrow">
                       <div className="card-header">
                         <div>
                           <h3>Scheduled capture</h3>
@@ -4020,120 +4148,66 @@ export const Dashboard = () => {
                             Plan recurring snapshots for chosen voice channels.
                           </p>
                         </div>
-                        <Button variant="ghost" onClick={addVoicePresenceSchedule}>
-                          Add schedule
-                        </Button>
                       </div>
                       {voicePresenceSettings.schedules.length === 0 ? (
                         <div className="empty-state">
                           <p className="muted">No schedules yet.</p>
+                          <Button variant="outline" onClick={addVoicePresenceSchedule}>
+                            <span className="btn-icon" aria-hidden="true">+</span>
+                            Add schedule
+                          </Button>
                         </div>
                       ) : (
-                        <div className="presence-schedule-list">
-                          {voicePresenceSettings.schedules.map((schedule, index) => (
-                            <div key={schedule.id} className="presence-schedule-card">
-                              <div className="card-header">
-                                <div>
-                                  <h4>Schedule {index + 1}</h4>
+                        <div className="presence-schedule-summary">
+                          {voicePresenceSettings.schedules.map((schedule, index) => {
+                            const dayLabel =
+                              presenceDays.find((day) => day.value === schedule.dayOfWeek)?.label ??
+                              "Unknown";
+                            const name = schedule.name?.trim() || `Schedule ${index + 1}`;
+                            const channelLabel = schedule.channelIds.length
+                              ? `${schedule.channelIds.length} channel${
+                                  schedule.channelIds.length === 1 ? "" : "s"
+                                }`
+                              : "All channels";
+                            return (
+                              <div key={schedule.id} className="presence-schedule-summary-card">
+                                <div className="presence-schedule-summary-main">
+                                  <strong>{name}</strong>
+                                  <p className="muted">
+                                    {dayLabel} · {schedule.time} · {channelLabel}
+                                  </p>
                                   <p className="muted">
                                     Last run: {schedule.lastRun || "Never"}
                                   </p>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="btn btn-ghost"
-                                  onClick={() => removeVoicePresenceSchedule(schedule.id)}
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                              <div className="form-grid">
-                                <label>
-                                  Schedule name
-                                  <input
-                                    value={schedule.name ?? ""}
-                                    onChange={(event) =>
-                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                        ...prev,
-                                        name: event.target.value,
-                                      }))
-                                    }
-                                    placeholder="e.g. Saturday raid check"
-                                  />
-                                </label>
-                              </div>
-                              <div className="form-grid split">
-                                <label>
-                                  Day of week
-                                  <select
-                                    value={schedule.dayOfWeek}
-                                    onChange={(event) =>
-                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                        ...prev,
-                                        dayOfWeek: Number(event.target.value),
-                                      }))
-                                    }
+                                <div className="presence-schedule-summary-meta">
+                                  <span className={`pill ${schedule.enabled ? "success" : "neutral"}`}>
+                                    {schedule.enabled ? "Enabled" : "Paused"}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => setActivePresenceScheduleId(schedule.id)}
                                   >
-                                    {presenceDays.map((day) => (
-                                      <option key={day.value} value={day.value}>
-                                        {day.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <label>
-                                  Time
-                                  <input
-                                    type="time"
-                                    value={schedule.time}
-                                    onChange={(event) =>
-                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                        ...prev,
-                                        time: event.target.value,
-                                      }))
-                                    }
-                                  />
-                                </label>
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => removeVoicePresenceSchedule(schedule.id)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="switch-row">
-                                <label className="switch-control">
-                                  <input
-                                    type="checkbox"
-                                    checked={schedule.enabled}
-                                    onChange={() =>
-                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                        ...prev,
-                                        enabled: !prev.enabled,
-                                      }))
-                                    }
-                                  />
-                                </label>
-                                <span className="switch-label">Enabled</span>
-                              </div>
-                              <div className="presence-channel-grid presence-channel-grid--scroll">
-                                {voiceChannels.map((channel) => (
-                                  <label key={channel.id} className="presence-channel-option">
-                                    <input
-                                      type="checkbox"
-                                      checked={schedule.channelIds.includes(channel.id)}
-                                      onChange={() =>
-                                        updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                          ...prev,
-                                          channelIds: toggleSelection(prev.channelIds, channel.id),
-                                        }))
-                                      }
-                                    />
-                                    <span>{channel.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-                              {voiceChannels.length === 0 ? (
-                                <p className="muted">No voice channels available.</p>
-                              ) : null}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
+                      <div className="section-actions">
+                        <Button variant="outline" onClick={addVoicePresenceSchedule}>
+                          <span className="btn-icon" aria-hidden="true">+</span>
+                          Add schedule
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ) : null}
@@ -4226,32 +4300,6 @@ export const Dashboard = () => {
                     Add multiple images per emoji. One is chosen at random when it triggers.
                   </p>
                 </div>
-                <div className="section-actions">
-                  <Button
-                    variant="outline"
-                    onClick={handleEmojiSave}
-                    disabled={emojiSaving || emojiUploadInProgress}
-                  >
-                    {emojiSaving ? "Saving..." : emojiUploadInProgress ? "Uploading..." : "Save triggers"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      const id = createId();
-                      setEmojiRows((prev) => [
-                        ...prev,
-                        {
-                          id,
-                          emoji: "",
-                          images: [createEmojiImageRow()],
-                        },
-                      ]);
-                      setActiveEmojiTriggerId(id);
-                    }}
-                  >
-                    Add trigger
-                  </Button>
-                </div>
               </div>
               <div className="card">
                 <div className="switch-row">
@@ -4284,6 +4332,7 @@ export const Dashboard = () => {
                         setActiveEmojiTriggerId(id);
                       }}
                     >
+                      <span className="btn-icon" aria-hidden="true">+</span>
                       Add trigger
                     </Button>
                   </div>
@@ -4350,6 +4399,26 @@ export const Dashboard = () => {
                     })}
                   </div>
                 )}
+                <div className="section-actions">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const id = createId();
+                      setEmojiRows((prev) => [
+                        ...prev,
+                        {
+                          id,
+                          emoji: "",
+                          images: [createEmojiImageRow()],
+                        },
+                      ]);
+                      setActiveEmojiTriggerId(id);
+                    }}
+                  >
+                    <span className="btn-icon" aria-hidden="true">+</span>
+                    Add trigger
+                  </Button>
+                </div>
                 <p className="muted">
                   Uploads: {countEmojiUploads(emojiRows)}/{maxEmojiUploads}. Links are unlimited.
                 </p>
@@ -4371,19 +4440,8 @@ export const Dashboard = () => {
                     Create multiple messages with custom emoji → role pairs.
                   </p>
                 </div>
-                <div className="section-actions">
-                  <Button onClick={handleRoleReactionsSave} disabled={roleReactionsSaving}>
-                    {roleReactionsSaving ? "Saving..." : "Save role reactions"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={addRoleReactionMessage}
-                  >
-                    Add message
-                  </Button>
-                </div>
               </div>
-              <div className="card">
+              <div className="card card--narrow">
                 <div className="switch-row">
                   <label className="switch-control">
                     <input
@@ -4408,6 +4466,7 @@ export const Dashboard = () => {
                     <div className="empty-state">
                       <p className="muted">Create your first reaction message.</p>
                       <Button variant="outline" onClick={addRoleReactionMessage}>
+                        <span className="btn-icon" aria-hidden="true">+</span>
                         Add message
                       </Button>
                     </div>
@@ -4510,6 +4569,12 @@ export const Dashboard = () => {
                 ) : (
                   <p className="muted">Role reactions are disabled.</p>
                 )}
+                <div className="section-actions">
+                  <Button variant="outline" onClick={addRoleReactionMessage}>
+                    <span className="btn-icon" aria-hidden="true">+</span>
+                    Add message
+                  </Button>
+                </div>
               </div>
             </section>
           )
@@ -4580,19 +4645,19 @@ export const Dashboard = () => {
                     </select>
                   </label>
                 </div>
-                <div className="log-filters">
+                <div className="tab-row log-tabs">
                   {conqbotLogCategories.map((category) => (
                     <button
                       key={category.key}
                       type="button"
-                      className={`log-filter log-filter--${category.tone} ${
+                      className={`tab-button log-tab log-tab--${category.tone} ${
                         adminLogCategory === category.key ? "active" : ""
                       }`}
                       onClick={() => setAdminLogCategory(category.key)}
                     >
-                      <span className="log-filter-icon">{category.icon}</span>
+                      <span className="log-tab-icon">{category.icon}</span>
                       <span>{category.label}</span>
-                      <span className="log-filter-count">{conqbotLogCounts[category.key]}</span>
+                      <span className="log-tab-count">{conqbotLogCounts[category.key]}</span>
                     </button>
                   ))}
                 </div>
@@ -4760,11 +4825,8 @@ export const Dashboard = () => {
                   <h1>Assign roles on join</h1>
                   <p className="muted">Automatically grant a role when someone joins the server.</p>
                 </div>
-                <Button onClick={handleAutoroleSave} disabled={autoroleSaving}>
-                  {autoroleSaving ? "Saving..." : "Save auto role"}
-                </Button>
               </div>
-              <div className="card">
+              <div className="card card--narrow">
                 <div className="switch-row">
                   <label className="switch-control">
                     <input
@@ -4822,11 +4884,8 @@ export const Dashboard = () => {
                   <h1>Quick toggles</h1>
                   <p className="muted">Small switches that change the bot behavior instantly.</p>
                 </div>
-                <Button variant="outline" onClick={handleWarthogSave} disabled={warthogSaving}>
-                  {warthogSaving ? "Saving..." : "Save Warthog"}
-                </Button>
               </div>
-              <div className="card">
+              <div className="card card--narrow">
                 <div className="switch-row">
                   <label className="switch-control">
                     <input
@@ -5231,20 +5290,118 @@ export const Dashboard = () => {
                     </label>
                   </div>
                   {activeRoleReactionMessage.type === "text" ? (
-                    <label>
-                      Message text
-                      <textarea
-                        rows={3}
-                        value={activeRoleReactionMessage.message}
-                        onChange={(event) =>
-                          updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
-                            ...prev,
-                            message: event.target.value,
-                          }))
-                        }
-                      />
-                      <span className="muted">Emoji are supported in the message.</span>
-                    </label>
+                    <>
+                      <label>
+                        Message text
+                        <textarea
+                          rows={3}
+                          value={activeRoleReactionMessage.message}
+                          onChange={(event) =>
+                            updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                              ...prev,
+                              message: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <div className="composer-tools">
+                        <div className="emoji-select">
+                          <button
+                            type="button"
+                            className="emoji-select-trigger"
+                            onClick={() => toggleMessageEmojiPicker("text")}
+                          >
+                            <span className="emoji-select-placeholder">😊</span>
+                            <span>Add emoji</span>
+                          </button>
+                          {messageEmojiOpen && messageEmojiTarget === "text" ? (
+                            <div className="emoji-select-menu emoji-select-menu--wide">
+                              <input
+                                className="emoji-search"
+                                placeholder="Search emoji..."
+                                value={messageEmojiSearch}
+                                onChange={(event) => setMessageEmojiSearch(event.target.value)}
+                              />
+                              <div className="emoji-group">
+                                <span className="emoji-group-label">Server emojis</span>
+                                <div className="emoji-grid">
+                                  {filteredMessageCustomEmojis.length === 0 ? (
+                                    <span className="muted">No matches.</span>
+                                  ) : (
+                                    filteredMessageCustomEmojis.map((option) => (
+                                      <button
+                                        key={option.id}
+                                        type="button"
+                                        className="emoji-option"
+                                        onClick={() => {
+                                          insertRoleReactionToken(
+                                            activeRoleReactionMessage.key,
+                                            formatEmojiToken(option),
+                                            "text"
+                                          );
+                                          setMessageEmojiOpen(false);
+                                          setMessageEmojiSearch("");
+                                        }}
+                                      >
+                                        {option.url ? (
+                                          <img src={option.url} alt={option.name} />
+                                        ) : (
+                                          <span className="emoji-glyph">{option.id}</span>
+                                        )}
+                                        <span>{option.name}</span>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                              <div className="emoji-group">
+                                <span className="emoji-group-label">Default emojis</span>
+                                <div className="emoji-grid">
+                                  {filteredMessageDefaultEmojis.map((option) => (
+                                    <button
+                                      key={option.id}
+                                      type="button"
+                                      className="emoji-option"
+                                      onClick={() => {
+                                        insertRoleReactionToken(
+                                          activeRoleReactionMessage.key,
+                                          formatEmojiToken(option),
+                                          "text"
+                                        );
+                                        setMessageEmojiOpen(false);
+                                        setMessageEmojiSearch("");
+                                      }}
+                                    >
+                                      <span className="emoji-glyph">{option.id}</span>
+                                      <span>{option.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                        <label className="composer-mention">
+                          Mention role
+                          <SearchableSelect
+                            value={roleMentionPick}
+                            onChange={(value) =>
+                              handleRoleMentionInsert(
+                                activeRoleReactionMessage.key,
+                                value,
+                                "text"
+                              )
+                            }
+                            options={roles.map((role) => ({
+                              value: role.id,
+                              label: stripRolePrefix(role.name),
+                            }))}
+                            placeholder="Search roles..."
+                            emptyLabel="Select role"
+                          />
+                        </label>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <label>
@@ -5283,6 +5440,103 @@ export const Dashboard = () => {
                           }
                         />
                       </label>
+                      <div className="composer-tools">
+                        <div className="emoji-select">
+                          <button
+                            type="button"
+                            className="emoji-select-trigger"
+                            onClick={() => toggleMessageEmojiPicker("embed")}
+                          >
+                            <span className="emoji-select-placeholder">😊</span>
+                            <span>Add emoji</span>
+                          </button>
+                          {messageEmojiOpen && messageEmojiTarget === "embed" ? (
+                            <div className="emoji-select-menu emoji-select-menu--wide">
+                              <input
+                                className="emoji-search"
+                                placeholder="Search emoji..."
+                                value={messageEmojiSearch}
+                                onChange={(event) => setMessageEmojiSearch(event.target.value)}
+                              />
+                              <div className="emoji-group">
+                                <span className="emoji-group-label">Server emojis</span>
+                                <div className="emoji-grid">
+                                  {filteredMessageCustomEmojis.length === 0 ? (
+                                    <span className="muted">No matches.</span>
+                                  ) : (
+                                    filteredMessageCustomEmojis.map((option) => (
+                                      <button
+                                        key={option.id}
+                                        type="button"
+                                        className="emoji-option"
+                                        onClick={() => {
+                                          insertRoleReactionToken(
+                                            activeRoleReactionMessage.key,
+                                            formatEmojiToken(option),
+                                            "embed"
+                                          );
+                                          setMessageEmojiOpen(false);
+                                          setMessageEmojiSearch("");
+                                        }}
+                                      >
+                                        {option.url ? (
+                                          <img src={option.url} alt={option.name} />
+                                        ) : (
+                                          <span className="emoji-glyph">{option.id}</span>
+                                        )}
+                                        <span>{option.name}</span>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                              <div className="emoji-group">
+                                <span className="emoji-group-label">Default emojis</span>
+                                <div className="emoji-grid">
+                                  {filteredMessageDefaultEmojis.map((option) => (
+                                    <button
+                                      key={option.id}
+                                      type="button"
+                                      className="emoji-option"
+                                      onClick={() => {
+                                        insertRoleReactionToken(
+                                          activeRoleReactionMessage.key,
+                                          formatEmojiToken(option),
+                                          "embed"
+                                        );
+                                        setMessageEmojiOpen(false);
+                                        setMessageEmojiSearch("");
+                                      }}
+                                    >
+                                      <span className="emoji-glyph">{option.id}</span>
+                                      <span>{option.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                        <label className="composer-mention">
+                          Mention role
+                          <SearchableSelect
+                            value={roleMentionPick}
+                            onChange={(value) =>
+                              handleRoleMentionInsert(
+                                activeRoleReactionMessage.key,
+                                value,
+                                "embed"
+                              )
+                            }
+                            options={roles.map((role) => ({
+                              value: role.id,
+                              label: stripRolePrefix(role.name),
+                            }))}
+                            placeholder="Search roles..."
+                            emptyLabel="Select role"
+                          />
+                        </label>
+                      </div>
                       <label className="color-input">
                         Accent color
                         <input
@@ -5454,6 +5708,125 @@ export const Dashboard = () => {
           </div>
         ) : null}
 
+        {activePresenceSchedule ? (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={closePresenceScheduleModal}
+          >
+            <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <p className="eyebrow">Scheduled capture</p>
+                  <h2>{activePresenceSchedule.name?.trim() || "Voice capture schedule"}</h2>
+                  <p className="muted">Set the day, time, and channels to scan.</p>
+                </div>
+                <div className="modal-actions">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      removeVoicePresenceSchedule(activePresenceSchedule.id);
+                      closePresenceScheduleModal();
+                    }}
+                  >
+                    Delete
+                  </Button>
+                  <Button variant="ghost" onClick={closePresenceScheduleModal}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+              <div className="modal-body">
+                <div className="form-grid">
+                  <label>
+                    Schedule name
+                    <input
+                      value={activePresenceSchedule.name ?? ""}
+                      onChange={(event) =>
+                        updateVoicePresenceSchedule(activePresenceSchedule.id, (prev) => ({
+                          ...prev,
+                          name: event.target.value,
+                        }))
+                      }
+                      placeholder="e.g. Saturday raid check"
+                    />
+                  </label>
+                </div>
+                <div className="form-grid split">
+                  <label>
+                    Day of week
+                    <select
+                      value={activePresenceSchedule.dayOfWeek}
+                      onChange={(event) =>
+                        updateVoicePresenceSchedule(activePresenceSchedule.id, (prev) => ({
+                          ...prev,
+                          dayOfWeek: Number(event.target.value),
+                        }))
+                      }
+                    >
+                      {presenceDays.map((day) => (
+                        <option key={day.value} value={day.value}>
+                          {day.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Time
+                    <input
+                      type="time"
+                      value={activePresenceSchedule.time}
+                      onChange={(event) =>
+                        updateVoicePresenceSchedule(activePresenceSchedule.id, (prev) => ({
+                          ...prev,
+                          time: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={activePresenceSchedule.enabled}
+                      onChange={() =>
+                        updateVoicePresenceSchedule(activePresenceSchedule.id, (prev) => ({
+                          ...prev,
+                          enabled: !prev.enabled,
+                        }))
+                      }
+                    />
+                  </label>
+                  <span className="switch-label">Enabled</span>
+                </div>
+                {voiceChannels.length === 0 ? (
+                  <p className="muted">No voice channels available.</p>
+                ) : (
+                  <div className="presence-channel-grid presence-channel-grid--scroll">
+                    {voiceChannels.map((channel) => (
+                      <label key={channel.id} className="presence-channel-option">
+                        <input
+                          type="checkbox"
+                          checked={activePresenceSchedule.channelIds.includes(channel.id)}
+                          onChange={() =>
+                            updateVoicePresenceSchedule(activePresenceSchedule.id, (prev) => ({
+                              ...prev,
+                              channelIds: toggleSelection(prev.channelIds, channel.id),
+                            }))
+                          }
+                        />
+                        <span>{formatVoiceChannelName(channel.name)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {activePresenceLog ? (
           <div
             className="presence-modal-overlay"
@@ -5486,7 +5859,7 @@ export const Dashboard = () => {
                     );
                     return (
                       <div key={channel.id} className="presence-detail-block">
-                        <span className="muted">{channel.name}</span>
+                        <span className="muted">{formatVoiceChannelName(channel.name)}</span>
                         {members.length === 0 ? (
                           <span className="muted">No members</span>
                         ) : (
@@ -5511,7 +5884,7 @@ export const Dashboard = () => {
           <div className="save-bar" role="status" aria-live="polite">
             <div>
               <strong>Unsaved changes</strong>
-              <p className="muted">Save or discard to keep your edits.</p>
+              <p className="muted">Save or cancel to keep your edits.</p>
             </div>
             <div className="save-bar-actions">
               <Button variant="ghost" onClick={handleUnsavedDiscard} disabled={discardBarDisabled}>

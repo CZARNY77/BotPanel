@@ -5,42 +5,45 @@ import { getInviteUrl } from "../api/client";
 import { Button } from "../components/Button";
 import logo from "../assets/logo.png";
 
-const features = [
+const highlights = [
   {
-    title: "Overview and server insights",
-    description: "See server status, bot connectivity, and quick health details at a glance.",
-  },
-  {
-    title: "Greetings & farewells",
-    description: "Customize welcome and goodbye messages with text or embeds per server.",
+    title: "Welcome & Farewell flows",
+    description: "Build friendly first impressions with optional embeds and smart toggles.",
   },
   {
     title: "Event creator",
-    description: "Publish RSVP events with sign-ups, reminders, and role pings.",
+    description: "Schedule Discord-style RSVPs with reminders, roles, and repeat cadence.",
   },
   {
-    title: "Voice presence",
-    description: "Capture voice attendance manually or schedule weekly snapshots.",
+    title: "Voice presence snapshots",
+    description: "Capture voice attendance manually or automate weekly check-ins.",
   },
   {
     title: "Emoji triggers",
-    description: "Map emojis to multiple images and deliver a random response.",
+    description: "Map emojis to multiple images and send a random reply.",
   },
   {
     title: "Role reactions",
     description: "Let members self-assign roles using reaction messages.",
   },
   {
-    title: "Auto role",
-    description: "Assign a role automatically when someone joins your server.",
+    title: "Auto role + utilities",
+    description: "Instantly assign roles and manage extra bot toggles in one place.",
+  },
+];
+
+const capabilityGroups = [
+  {
+    title: "Engage members",
+    items: ["Greetings & farewells", "Emoji triggers", "Role reactions"],
   },
   {
-    title: "Admin console",
-    description: "Review ConqBot and BotPanel logs in one secured view.",
+    title: "Organize events",
+    items: ["RSVP events", "Role pings", "Repeat schedules"],
   },
   {
-    title: "Other tools",
-    description: "Extra toggles like Warthog and other server utilities.",
+    title: "Automate routines",
+    items: ["Auto roles", "Voice presence", "Warthog controls"],
   },
 ];
 
@@ -84,56 +87,65 @@ export const Landing = () => {
   return (
     <div className="landing">
       <section className="hero">
-        <div>
+        <div className="hero-copy">
           <div className="hero-brand">
             <img src={logo} alt="ConqBot logo" />
             <span>ConqBot</span>
           </div>
           <p className="eyebrow">Discord control panel</p>
-          <h1>Control every Discord server with a single, clean dashboard.</h1>
+          <h1>Run your Discord servers with one focused command deck.</h1>
           <p className="muted">
-            ConqBot Panel brings automation, welcome flows, and event planning into one modern
-            workspace.
+            Automations, event planning, and member engagement tools, all in one consistent panel.
           </p>
           <div className="hero-actions">
             {heroCta}
-            <Button
-              variant="outline"
-              onClick={handleInvite}
-              disabled={inviteLoading}
-            >
+            <Button variant="outline" onClick={handleInvite} disabled={inviteLoading}>
               {inviteLoading ? "Opening..." : "Add ConqBot to Discord"}
             </Button>
             <a className="btn btn-outline" href="#features">
-              Explore features
+              View features
             </a>
           </div>
           {inviteError ? <p className="muted">{inviteError}</p> : null}
         </div>
-        <div className="hero-card">
-          <div className="hero-preview">
-            <div className="preview-bar">
-              <span className="preview-brand">
-                <img src={logo} alt="" />
-                ConqBot
-              </span>
-              <span className="pill info">Online</span>
+        <div className="hero-showcase">
+          <div className="hero-card hero-card--panel">
+            <div className="hero-card-header">
+              <span className="pill info">Live panel</span>
+              <span className="muted">Last sync 2m ago</span>
             </div>
-            <div className="preview-row">
-              <strong>3 servers online</strong>
-              <span className="muted">All systems ready</span>
+            <div className="hero-module-list">
+              {capabilityGroups.map((group) => (
+                <div key={group.title} className="hero-module">
+                  <strong>{group.title}</strong>
+                  <span className="muted">{group.items.join(" · ")}</span>
+                </div>
+              ))}
             </div>
-            <div className="preview-row">
-              <strong>Welcome flow</strong>
-              <span className="muted">Embed preview active</span>
+          </div>
+          <div className="hero-card hero-card--stats">
+            <h3>Quick glance</h3>
+            <div className="hero-stat-grid">
+              <div>
+                <span className="muted">Servers</span>
+                <strong>All connected</strong>
+              </div>
+              <div>
+                <span className="muted">Event planner</span>
+                <strong>Ready to publish</strong>
+              </div>
+              <div>
+                <span className="muted">Automation</span>
+                <strong>Auto role active</strong>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       <section id="features" className="feature-grid">
-        {features.map((feature) => (
-          <article key={feature.title} className="card">
+        {highlights.map((feature) => (
+          <article key={feature.title} className="feature-card">
             <h3>{feature.title}</h3>
             <p className="muted">{feature.description}</p>
           </article>
