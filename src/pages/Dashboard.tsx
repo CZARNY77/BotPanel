@@ -373,7 +373,6 @@ const emptyLoadingState: LoadingState = {
 };
 
 const maxEmojiUploads = 10;
-const maxUploadBytes = 5 * 1024 * 1024;
 const createId = () => Math.random().toString(36).slice(2, 9);
 const activeSectionStorageKey = "conqbot.activeSection";
 const activeServerStorageKey = "conqbot.activeServerId";
