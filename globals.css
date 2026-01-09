@@ -287,6 +287,42 @@ p {
   box-shadow: none;
 }
 
+.btn-tone-danger {
+  background: hsl(var(--destructive) / 0.14);
+  border-color: hsl(var(--destructive) / 0.5);
+  color: hsl(var(--destructive-foreground));
+}
+
+.btn-tone-danger:hover:not(:disabled) {
+  background: hsl(var(--destructive) / 0.25);
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 10px 22px hsl(var(--destructive) / 0.2);
+}
+
+.btn-tone-success {
+  background: hsl(var(--success) / 0.18);
+  border-color: hsl(var(--success) / 0.55);
+  color: hsl(var(--success-foreground));
+}
+
+.btn-tone-success:hover:not(:disabled) {
+  background: hsl(var(--success) / 0.3);
+  border-color: hsl(var(--success));
+  box-shadow: 0 10px 22px hsl(var(--success) / 0.2);
+}
+
+.btn-tone-info {
+  background: hsl(var(--info) / 0.18);
+  border-color: hsl(var(--info) / 0.55);
+  color: hsl(var(--info-foreground));
+}
+
+.btn-tone-info:hover:not(:disabled) {
+  background: hsl(var(--info) / 0.3);
+  border-color: hsl(var(--info));
+  box-shadow: 0 10px 22px hsl(var(--info) / 0.2);
+}
+
 .btn-icon {
   width: 16px;
   height: 16px;
@@ -593,10 +629,17 @@ p {
   width: 50px;
   height: 50px;
   border-radius: 16px;
-  border: 1px dashed hsl(var(--border));
-  background: transparent;
-  color: hsl(var(--foreground));
+  border: 1px dashed hsl(var(--primary) / 0.7);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
   font-size: 1.4rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+}
+
+.server-add:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 12px 24px hsl(var(--primary) / 0.25);
 }
 
 .server-add:disabled {
@@ -1697,6 +1740,54 @@ textarea {
   display: grid;
   gap: 6px;
   font-size: 0.85rem;
+}
+
+.composer-field {
+  display: grid;
+  gap: 8px;
+}
+
+.composer-input {
+  position: relative;
+}
+
+.composer-input textarea {
+  padding-right: 90px;
+}
+
+.composer-corner {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.35);
+  display: grid;
+  place-items: center;
+  font-size: 0.95rem;
+  transition: border 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.icon-button:hover {
+  background: hsl(var(--muted) / 0.55);
+  border-color: hsl(var(--primary) / 0.5);
+  transform: translateY(-1px);
+}
+
+.composer-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 12;
+  width: 240px;
 }
 
 .trigger-summary-list {

@@ -70,6 +70,12 @@ type SectionKey =
   | "admin"
   | "other";
 
+type GreetingComposerTarget =
+  | "welcome-text"
+  | "welcome-embed"
+  | "farewell-text"
+  | "farewell-embed";
+
 type TriggerRow = {
   id: string;
   emoji: string;
@@ -756,12 +762,23 @@ export const Dashboard = () => {
   const [roleReactionMessages, setRoleReactionMessages] = useState<RoleReactionMessageDraft[]>([]);
   const [activeRoleReactionKey, setActiveRoleReactionKey] = useState<string | null>(null);
   const [roleMentionPick, setRoleMentionPick] = useState("");
+  const [messageRoleOpen, setMessageRoleOpen] = useState(false);
+  const [messageRoleTarget, setMessageRoleTarget] = useState<"text" | "embed">("text");
   const [messageEmojiOpen, setMessageEmojiOpen] = useState(false);
   const [messageEmojiSearch, setMessageEmojiSearch] = useState("");
   const [messageEmojiTarget, setMessageEmojiTarget] = useState<"text" | "embed">("text");
   const [roleReactionsSaving, setRoleReactionsSaving] = useState(false);
   const [roleReactionsBaseline, setRoleReactionsBaseline] =
     useState<RoleReactionSettings>(emptyRoleReactions);
+
+  const [greetingEmojiOpen, setGreetingEmojiOpen] = useState(false);
+  const [greetingEmojiSearch, setGreetingEmojiSearch] = useState("");
+  const [greetingEmojiTarget, setGreetingEmojiTarget] =
+    useState<GreetingComposerTarget>("welcome-text");
+  const [greetingRoleOpen, setGreetingRoleOpen] = useState(false);
+  const [greetingRolePick, setGreetingRolePick] = useState("");
+  const [greetingRoleTarget, setGreetingRoleTarget] =
+    useState<GreetingComposerTarget>("welcome-text");
 
   const [adminUsers, setAdminUsers] = useState<string[]>([]);
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
@@ -844,8 +861,6 @@ export const Dashboard = () => {
     }
     if (activeServerId) {
       window.localStorage.setItem(activeServerStorageKey, activeServerId);
-    } else {
-      window.localStorage.removeItem(activeServerStorageKey);
     }
   }, [activeServerId]);
 
@@ -859,6 +874,13 @@ export const Dashboard = () => {
   useEffect(() => {
     activeServerIdRef.current = activeServerId;
   }, [activeServerId]);
+
+  useEffect(() => {
+    setGreetingEmojiOpen(false);
+    setGreetingEmojiSearch("");
+    setGreetingRoleOpen(false);
+    setGreetingRolePick("");
+  }, [greetingTab]);
 
   useEffect(() => {
     setLoaded(emptyLoadedState);
@@ -895,6 +917,14 @@ export const Dashboard = () => {
     setMessageEmojiOpen(false);
     setMessageEmojiSearch("");
     setMessageEmojiTarget("text");
+    setMessageRoleOpen(false);
+    setMessageRoleTarget("text");
+    setGreetingEmojiOpen(false);
+    setGreetingEmojiSearch("");
+    setGreetingEmojiTarget("welcome-text");
+    setGreetingRoleOpen(false);
+    setGreetingRolePick("");
+    setGreetingRoleTarget("welcome-text");
     setWarthogSettings(emptyWarthog);
     setWarthogBaseline(emptyWarthog);
     setWarthogRolePick("");
@@ -927,6 +957,11 @@ export const Dashboard = () => {
     setMessageEmojiOpen(false);
     setMessageEmojiSearch("");
     setRoleMentionPick("");
+    setMessageRoleOpen(false);
+    setGreetingEmojiOpen(false);
+    setGreetingEmojiSearch("");
+    setGreetingRoleOpen(false);
+    setGreetingRolePick("");
   }, [activeSection]);
 
   useEffect(() => {
@@ -938,13 +973,22 @@ export const Dashboard = () => {
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
-      if (!target?.closest(".emoji-select")) {
+      if (
+        !target?.closest(".emoji-select") &&
+        !target?.closest(".composer-popover") &&
+        !target?.closest(".composer-corner")
+      ) {
         setActiveEmojiPickerId(null);
         setActiveRoleEmojiPickerId(null);
         setEmojiSearch("");
         setRoleEmojiSearch("");
         setMessageEmojiOpen(false);
         setMessageEmojiSearch("");
+        setMessageRoleOpen(false);
+        setGreetingEmojiOpen(false);
+        setGreetingEmojiSearch("");
+        setGreetingRoleOpen(false);
+        setGreetingRolePick("");
       }
     };
     document.addEventListener("click", handleClick);
@@ -1431,6 +1475,7 @@ export const Dashboard = () => {
       void loadMetadata();
       void loadWelcome();
       void loadFarewell();
+      void loadEmojiOptions();
     }
 
     if (activeSection === "overview") {
@@ -2103,6 +2148,9 @@ export const Dashboard = () => {
     setActiveRoleReactionKey(null);
     setActiveRoleEmojiPickerId(null);
     setRoleEmojiSearch("");
+    setMessageEmojiOpen(false);
+    setMessageEmojiSearch("");
+    setMessageRoleOpen(false);
   };
 
   const addRoleReactionPair = (messageKey: string) => {
@@ -2177,6 +2225,7 @@ export const Dashboard = () => {
     }
     insertRoleReactionToken(messageKey, `<@&${roleId}>`, target);
     setRoleMentionPick("");
+    setMessageRoleOpen(false);
   };
 
   const toggleMessageEmojiPicker = (target: "text" | "embed") => {
@@ -2185,6 +2234,60 @@ export const Dashboard = () => {
     setMessageEmojiSearch("");
     setActiveEmojiPickerId(null);
     setActiveRoleEmojiPickerId(null);
+    setMessageRoleOpen(false);
+  };
+
+  const toggleMessageRolePicker = (target: "text" | "embed") => {
+    setMessageRoleTarget(target);
+    setMessageRoleOpen((prev) => (target === messageRoleTarget ? !prev : true));
+    setRoleMentionPick("");
+    setMessageEmojiOpen(false);
+  };
+
+  const insertGreetingToken = (target: GreetingComposerTarget, token: string) => {
+    const isWelcome = target.startsWith("welcome");
+    const isEmbed = target.endsWith("embed");
+    const updater = (prev: WelcomeSettings | FarewellSettings) => {
+      if (isEmbed) {
+        return {
+          ...prev,
+          embed: {
+            ...prev.embed,
+            description: `${prev.embed.description}${token}`,
+          },
+        };
+      }
+      return { ...prev, text: `${prev.text}${token}` };
+    };
+    if (isWelcome) {
+      setWelcomeSettings((prev) => updater(prev));
+    } else {
+      setFarewellSettings((prev) => updater(prev));
+    }
+  };
+
+  const toggleGreetingEmojiPicker = (target: GreetingComposerTarget) => {
+    setGreetingEmojiTarget(target);
+    setGreetingEmojiOpen((prev) => (target === greetingEmojiTarget ? !prev : true));
+    setGreetingEmojiSearch("");
+    setGreetingRoleOpen(false);
+  };
+
+  const toggleGreetingRolePicker = (target: GreetingComposerTarget) => {
+    setGreetingRoleTarget(target);
+    setGreetingRoleOpen((prev) => (target === greetingRoleTarget ? !prev : true));
+    setGreetingRolePick("");
+    setGreetingEmojiOpen(false);
+  };
+
+  const handleGreetingRoleInsert = (roleId: string, target: GreetingComposerTarget) => {
+    if (!roleId) {
+      setGreetingRolePick("");
+      return;
+    }
+    insertGreetingToken(target, `<@&${roleId}>`);
+    setGreetingRolePick("");
+    setGreetingRoleOpen(false);
   };
 
   const handleRoleReactionsSave = async () => {
@@ -2537,6 +2640,29 @@ export const Dashboard = () => {
     );
   }, [messageEmojiQuery]);
 
+  const greetingEmojiQuery = greetingEmojiSearch.trim().toLowerCase();
+  const filteredGreetingCustomEmojis = useMemo(() => {
+    if (!greetingEmojiQuery) {
+      return emojiOptions;
+    }
+    return emojiOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(greetingEmojiQuery) ||
+        option.id.toLowerCase().includes(greetingEmojiQuery)
+    );
+  }, [emojiOptions, greetingEmojiQuery]);
+
+  const filteredGreetingDefaultEmojis = useMemo(() => {
+    if (!greetingEmojiQuery) {
+      return defaultEmojiOptions;
+    }
+    return defaultEmojiOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(greetingEmojiQuery) ||
+        option.id.toLowerCase().includes(greetingEmojiQuery)
+    );
+  }, [greetingEmojiQuery]);
+
   const welcomeLoading =
     !loaded.welcome ||
     !loaded.farewell ||
@@ -2756,6 +2882,7 @@ export const Dashboard = () => {
           type="button"
           onClick={handleInvite}
           disabled={inviteLoading}
+          title="Add ConqBot to a server"
         >
           +
         </button>
@@ -3183,8 +3310,10 @@ export const Dashboard = () => {
                     </div>
                     <Button
                       variant="ghost"
+                      className="btn-tone-info"
                       onClick={() => loadVoicePresenceLogs(true)}
                       disabled={voicePresenceLogsLoading}
+                      title="Refresh"
                     >
                       {voicePresenceLogsLoading ? "Refreshing..." : "Refresh"}
                     </Button>
@@ -3293,21 +3422,25 @@ export const Dashboard = () => {
                               placeholder="Search channels..."
                             />
                           </label>
-                          <label>
-                            Message type
-                            <select
-                              value={welcomeSettings.type}
-                              onChange={(event) =>
-                                setWelcomeSettings((prev) => ({
-                                  ...prev,
-                                  type: event.target.value as "embed" | "text",
-                                }))
-                              }
-                            >
-                              <option value="embed">Embed</option>
-                              <option value="text">Plain text</option>
-                            </select>
-                          </label>
+                          <div className="field">
+                            <span>Message type</span>
+                            <div className="switch-row">
+                              <label className="switch-control">
+                                <input
+                                  type="checkbox"
+                                  checked={welcomeSettings.type === "embed"}
+                                  onChange={() =>
+                                    setWelcomeSettings((prev) => ({
+                                      ...prev,
+                                      type: prev.type === "embed" ? "text" : "embed",
+                                    }))
+                                  }
+                                  aria-label="Use embed message"
+                                />
+                              </label>
+                              <span className="switch-label">Use embed message</span>
+                            </div>
+                          </div>
                         </div>
 
                         {welcomeSettings.type === "embed" ? (
@@ -3327,21 +3460,123 @@ export const Dashboard = () => {
                                 }
                               />
                             </label>
-                            <label>
+                            <label className="composer-field">
                               Description
-                              <textarea
-                                rows={4}
-                                value={welcomeSettings.embed.description}
-                                onChange={(event) =>
-                                  setWelcomeSettings((prev) => ({
-                                    ...prev,
-                                    embed: {
-                                      ...prev.embed,
-                                      description: event.target.value,
-                                    },
-                                  }))
-                                }
-                              />
+                              <div className="composer-input">
+                                <textarea
+                                  rows={4}
+                                  value={welcomeSettings.embed.description}
+                                  onChange={(event) =>
+                                    setWelcomeSettings((prev) => ({
+                                      ...prev,
+                                      embed: {
+                                        ...prev.embed,
+                                        description: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                />
+                                <div className="composer-corner">
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Insert emoji"
+                                    aria-label="Insert emoji"
+                                    onClick={() => toggleGreetingEmojiPicker("welcome-embed")}
+                                  >
+                                    🙂
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Mention role"
+                                    aria-label="Mention role"
+                                    onClick={() => toggleGreetingRolePicker("welcome-embed")}
+                                  >
+                                    @
+                                  </button>
+                                </div>
+                                {greetingEmojiOpen && greetingEmojiTarget === "welcome-embed" ? (
+                                  <div className="emoji-select-menu emoji-select-menu--wide">
+                                    <input
+                                      className="emoji-search"
+                                      placeholder="Search emoji..."
+                                      value={greetingEmojiSearch}
+                                      onChange={(event) => setGreetingEmojiSearch(event.target.value)}
+                                    />
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Server emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingCustomEmojis.length === 0 ? (
+                                          <span className="muted">No matches.</span>
+                                        ) : (
+                                          filteredGreetingCustomEmojis.map((option) => (
+                                            <button
+                                              key={option.id}
+                                              type="button"
+                                              className="emoji-option"
+                                              onClick={() => {
+                                                insertGreetingToken(
+                                                  "welcome-embed",
+                                                  formatEmojiToken(option)
+                                                );
+                                                setGreetingEmojiOpen(false);
+                                                setGreetingEmojiSearch("");
+                                              }}
+                                            >
+                                              {option.url ? (
+                                                <img src={option.url} alt={option.name} />
+                                              ) : (
+                                                <span className="emoji-glyph">{option.id}</span>
+                                              )}
+                                              <span>{option.name}</span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Default emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingDefaultEmojis.map((option) => (
+                                          <button
+                                            key={option.id}
+                                            type="button"
+                                            className="emoji-option"
+                                            onClick={() => {
+                                              insertGreetingToken(
+                                                "welcome-embed",
+                                                formatEmojiToken(option)
+                                              );
+                                              setGreetingEmojiOpen(false);
+                                              setGreetingEmojiSearch("");
+                                            }}
+                                          >
+                                            <span className="emoji-glyph">{option.id}</span>
+                                            <span>{option.name}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {greetingRoleOpen && greetingRoleTarget === "welcome-embed" ? (
+                                  <div className="composer-popover">
+                                    <SearchableSelect
+                                      value={greetingRolePick}
+                                      onChange={(value) =>
+                                        handleGreetingRoleInsert(value, "welcome-embed")
+                                      }
+                                      options={roles.map((role) => ({
+                                        value: role.id,
+                                        label: stripRolePrefix(role.name),
+                                      }))}
+                                      placeholder="Search roles..."
+                                      emptyLabel="Select role"
+                                    />
+                                  </div>
+                                ) : null}
+                              </div>
                             </label>
                             <div className="field">
                               <span>Accent color</span>
@@ -3385,18 +3620,120 @@ export const Dashboard = () => {
                           </div>
                         ) : (
                           <div className="form-grid">
-                            <label>
+                            <label className="composer-field">
                               Message text
-                              <textarea
-                                rows={4}
-                                value={welcomeSettings.text}
-                                onChange={(event) =>
-                                  setWelcomeSettings((prev) => ({
-                                    ...prev,
-                                    text: event.target.value,
-                                  }))
-                                }
-                              />
+                              <div className="composer-input">
+                                <textarea
+                                  rows={4}
+                                  value={welcomeSettings.text}
+                                  onChange={(event) =>
+                                    setWelcomeSettings((prev) => ({
+                                      ...prev,
+                                      text: event.target.value,
+                                    }))
+                                  }
+                                />
+                                <div className="composer-corner">
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Insert emoji"
+                                    aria-label="Insert emoji"
+                                    onClick={() => toggleGreetingEmojiPicker("welcome-text")}
+                                  >
+                                    🙂
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Mention role"
+                                    aria-label="Mention role"
+                                    onClick={() => toggleGreetingRolePicker("welcome-text")}
+                                  >
+                                    @
+                                  </button>
+                                </div>
+                                {greetingEmojiOpen && greetingEmojiTarget === "welcome-text" ? (
+                                  <div className="emoji-select-menu emoji-select-menu--wide">
+                                    <input
+                                      className="emoji-search"
+                                      placeholder="Search emoji..."
+                                      value={greetingEmojiSearch}
+                                      onChange={(event) => setGreetingEmojiSearch(event.target.value)}
+                                    />
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Server emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingCustomEmojis.length === 0 ? (
+                                          <span className="muted">No matches.</span>
+                                        ) : (
+                                          filteredGreetingCustomEmojis.map((option) => (
+                                            <button
+                                              key={option.id}
+                                              type="button"
+                                              className="emoji-option"
+                                              onClick={() => {
+                                                insertGreetingToken(
+                                                  "welcome-text",
+                                                  formatEmojiToken(option)
+                                                );
+                                                setGreetingEmojiOpen(false);
+                                                setGreetingEmojiSearch("");
+                                              }}
+                                            >
+                                              {option.url ? (
+                                                <img src={option.url} alt={option.name} />
+                                              ) : (
+                                                <span className="emoji-glyph">{option.id}</span>
+                                              )}
+                                              <span>{option.name}</span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Default emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingDefaultEmojis.map((option) => (
+                                          <button
+                                            key={option.id}
+                                            type="button"
+                                            className="emoji-option"
+                                            onClick={() => {
+                                              insertGreetingToken(
+                                                "welcome-text",
+                                                formatEmojiToken(option)
+                                              );
+                                              setGreetingEmojiOpen(false);
+                                              setGreetingEmojiSearch("");
+                                            }}
+                                          >
+                                            <span className="emoji-glyph">{option.id}</span>
+                                            <span>{option.name}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {greetingRoleOpen && greetingRoleTarget === "welcome-text" ? (
+                                  <div className="composer-popover">
+                                    <SearchableSelect
+                                      value={greetingRolePick}
+                                      onChange={(value) =>
+                                        handleGreetingRoleInsert(value, "welcome-text")
+                                      }
+                                      options={roles.map((role) => ({
+                                        value: role.id,
+                                        label: stripRolePrefix(role.name),
+                                      }))}
+                                      placeholder="Search roles..."
+                                      emptyLabel="Select role"
+                                    />
+                                  </div>
+                                ) : null}
+                              </div>
                             </label>
                             <p className="muted">You can use {"{user}"} and {"{server}"} variables.</p>
                           </div>
@@ -3452,21 +3789,25 @@ export const Dashboard = () => {
                               placeholder="Search channels..."
                             />
                           </label>
-                          <label>
-                            Message type
-                            <select
-                              value={farewellSettings.type}
-                              onChange={(event) =>
-                                setFarewellSettings((prev) => ({
-                                  ...prev,
-                                  type: event.target.value as "embed" | "text",
-                                }))
-                              }
-                            >
-                              <option value="embed">Embed</option>
-                              <option value="text">Plain text</option>
-                            </select>
-                          </label>
+                          <div className="field">
+                            <span>Message type</span>
+                            <div className="switch-row">
+                              <label className="switch-control">
+                                <input
+                                  type="checkbox"
+                                  checked={farewellSettings.type === "embed"}
+                                  onChange={() =>
+                                    setFarewellSettings((prev) => ({
+                                      ...prev,
+                                      type: prev.type === "embed" ? "text" : "embed",
+                                    }))
+                                  }
+                                  aria-label="Use embed message"
+                                />
+                              </label>
+                              <span className="switch-label">Use embed message</span>
+                            </div>
+                          </div>
                         </div>
 
                         {farewellSettings.type === "embed" ? (
@@ -3486,21 +3827,123 @@ export const Dashboard = () => {
                                 }
                               />
                             </label>
-                            <label>
+                            <label className="composer-field">
                               Description
-                              <textarea
-                                rows={4}
-                                value={farewellSettings.embed.description}
-                                onChange={(event) =>
-                                  setFarewellSettings((prev) => ({
-                                    ...prev,
-                                    embed: {
-                                      ...prev.embed,
-                                      description: event.target.value,
-                                    },
-                                  }))
-                                }
-                              />
+                              <div className="composer-input">
+                                <textarea
+                                  rows={4}
+                                  value={farewellSettings.embed.description}
+                                  onChange={(event) =>
+                                    setFarewellSettings((prev) => ({
+                                      ...prev,
+                                      embed: {
+                                        ...prev.embed,
+                                        description: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                />
+                                <div className="composer-corner">
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Insert emoji"
+                                    aria-label="Insert emoji"
+                                    onClick={() => toggleGreetingEmojiPicker("farewell-embed")}
+                                  >
+                                    🙂
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Mention role"
+                                    aria-label="Mention role"
+                                    onClick={() => toggleGreetingRolePicker("farewell-embed")}
+                                  >
+                                    @
+                                  </button>
+                                </div>
+                                {greetingEmojiOpen && greetingEmojiTarget === "farewell-embed" ? (
+                                  <div className="emoji-select-menu emoji-select-menu--wide">
+                                    <input
+                                      className="emoji-search"
+                                      placeholder="Search emoji..."
+                                      value={greetingEmojiSearch}
+                                      onChange={(event) => setGreetingEmojiSearch(event.target.value)}
+                                    />
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Server emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingCustomEmojis.length === 0 ? (
+                                          <span className="muted">No matches.</span>
+                                        ) : (
+                                          filteredGreetingCustomEmojis.map((option) => (
+                                            <button
+                                              key={option.id}
+                                              type="button"
+                                              className="emoji-option"
+                                              onClick={() => {
+                                                insertGreetingToken(
+                                                  "farewell-embed",
+                                                  formatEmojiToken(option)
+                                                );
+                                                setGreetingEmojiOpen(false);
+                                                setGreetingEmojiSearch("");
+                                              }}
+                                            >
+                                              {option.url ? (
+                                                <img src={option.url} alt={option.name} />
+                                              ) : (
+                                                <span className="emoji-glyph">{option.id}</span>
+                                              )}
+                                              <span>{option.name}</span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Default emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingDefaultEmojis.map((option) => (
+                                          <button
+                                            key={option.id}
+                                            type="button"
+                                            className="emoji-option"
+                                            onClick={() => {
+                                              insertGreetingToken(
+                                                "farewell-embed",
+                                                formatEmojiToken(option)
+                                              );
+                                              setGreetingEmojiOpen(false);
+                                              setGreetingEmojiSearch("");
+                                            }}
+                                          >
+                                            <span className="emoji-glyph">{option.id}</span>
+                                            <span>{option.name}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {greetingRoleOpen && greetingRoleTarget === "farewell-embed" ? (
+                                  <div className="composer-popover">
+                                    <SearchableSelect
+                                      value={greetingRolePick}
+                                      onChange={(value) =>
+                                        handleGreetingRoleInsert(value, "farewell-embed")
+                                      }
+                                      options={roles.map((role) => ({
+                                        value: role.id,
+                                        label: stripRolePrefix(role.name),
+                                      }))}
+                                      placeholder="Search roles..."
+                                      emptyLabel="Select role"
+                                    />
+                                  </div>
+                                ) : null}
+                              </div>
                             </label>
                             <div className="field">
                               <span>Accent color</span>
@@ -3544,18 +3987,120 @@ export const Dashboard = () => {
                           </div>
                         ) : (
                           <div className="form-grid">
-                            <label>
+                            <label className="composer-field">
                               Message text
-                              <textarea
-                                rows={4}
-                                value={farewellSettings.text}
-                                onChange={(event) =>
-                                  setFarewellSettings((prev) => ({
-                                    ...prev,
-                                    text: event.target.value,
-                                  }))
-                                }
-                              />
+                              <div className="composer-input">
+                                <textarea
+                                  rows={4}
+                                  value={farewellSettings.text}
+                                  onChange={(event) =>
+                                    setFarewellSettings((prev) => ({
+                                      ...prev,
+                                      text: event.target.value,
+                                    }))
+                                  }
+                                />
+                                <div className="composer-corner">
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Insert emoji"
+                                    aria-label="Insert emoji"
+                                    onClick={() => toggleGreetingEmojiPicker("farewell-text")}
+                                  >
+                                    🙂
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    title="Mention role"
+                                    aria-label="Mention role"
+                                    onClick={() => toggleGreetingRolePicker("farewell-text")}
+                                  >
+                                    @
+                                  </button>
+                                </div>
+                                {greetingEmojiOpen && greetingEmojiTarget === "farewell-text" ? (
+                                  <div className="emoji-select-menu emoji-select-menu--wide">
+                                    <input
+                                      className="emoji-search"
+                                      placeholder="Search emoji..."
+                                      value={greetingEmojiSearch}
+                                      onChange={(event) => setGreetingEmojiSearch(event.target.value)}
+                                    />
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Server emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingCustomEmojis.length === 0 ? (
+                                          <span className="muted">No matches.</span>
+                                        ) : (
+                                          filteredGreetingCustomEmojis.map((option) => (
+                                            <button
+                                              key={option.id}
+                                              type="button"
+                                              className="emoji-option"
+                                              onClick={() => {
+                                                insertGreetingToken(
+                                                  "farewell-text",
+                                                  formatEmojiToken(option)
+                                                );
+                                                setGreetingEmojiOpen(false);
+                                                setGreetingEmojiSearch("");
+                                              }}
+                                            >
+                                              {option.url ? (
+                                                <img src={option.url} alt={option.name} />
+                                              ) : (
+                                                <span className="emoji-glyph">{option.id}</span>
+                                              )}
+                                              <span>{option.name}</span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="emoji-group">
+                                      <span className="emoji-group-label">Default emojis</span>
+                                      <div className="emoji-grid">
+                                        {filteredGreetingDefaultEmojis.map((option) => (
+                                          <button
+                                            key={option.id}
+                                            type="button"
+                                            className="emoji-option"
+                                            onClick={() => {
+                                              insertGreetingToken(
+                                                "farewell-text",
+                                                formatEmojiToken(option)
+                                              );
+                                              setGreetingEmojiOpen(false);
+                                              setGreetingEmojiSearch("");
+                                            }}
+                                          >
+                                            <span className="emoji-glyph">{option.id}</span>
+                                            <span>{option.name}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {greetingRoleOpen && greetingRoleTarget === "farewell-text" ? (
+                                  <div className="composer-popover">
+                                    <SearchableSelect
+                                      value={greetingRolePick}
+                                      onChange={(value) =>
+                                        handleGreetingRoleInsert(value, "farewell-text")
+                                      }
+                                      options={roles.map((role) => ({
+                                        value: role.id,
+                                        label: stripRolePrefix(role.name),
+                                      }))}
+                                      placeholder="Search roles..."
+                                      emptyLabel="Select role"
+                                    />
+                                  </div>
+                                ) : null}
+                              </div>
                             </label>
                             <p className="muted">You can use {"{user}"} and {"{server}"} variables.</p>
                           </div>
@@ -3899,14 +4444,16 @@ export const Dashboard = () => {
                                 type="button"
                                 className="btn btn-ghost"
                                 onClick={() => handleEditEvent(eventItem)}
+                                title="Edit event"
                               >
                                 Edit
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-ghost"
+                                className="btn btn-ghost btn-tone-danger"
                                 onClick={() => handleDeleteEvent(eventItem.id)}
                                 disabled={deletingEventId === eventItem.id}
+                                title="Delete event"
                               >
                                 {deletingEventId === eventItem.id ? "Deleting..." : "Delete"}
                               </button>
@@ -4152,9 +4699,14 @@ export const Dashboard = () => {
                       {voicePresenceSettings.schedules.length === 0 ? (
                         <div className="empty-state">
                           <p className="muted">No schedules yet.</p>
-                          <Button variant="outline" onClick={addVoicePresenceSchedule}>
+                          <Button
+                            variant="outline"
+                            className="btn-tone-success"
+                            onClick={addVoicePresenceSchedule}
+                            title="Add schedule"
+                          >
                             <span className="btn-icon" aria-hidden="true">+</span>
-                            Add schedule
+                            Add
                           </Button>
                         </div>
                       ) : (
@@ -4187,12 +4739,15 @@ export const Dashboard = () => {
                                   <Button
                                     variant="ghost"
                                     onClick={() => setActivePresenceScheduleId(schedule.id)}
+                                    title="Edit schedule"
                                   >
                                     Edit
                                   </Button>
                                   <Button
                                     variant="ghost"
+                                    className="btn-tone-danger"
                                     onClick={() => removeVoicePresenceSchedule(schedule.id)}
+                                    title="Remove schedule"
                                   >
                                     Remove
                                   </Button>
@@ -4203,9 +4758,14 @@ export const Dashboard = () => {
                         </div>
                       )}
                       <div className="section-actions">
-                        <Button variant="outline" onClick={addVoicePresenceSchedule}>
+                        <Button
+                          variant="outline"
+                          className="btn-tone-success"
+                          onClick={addVoicePresenceSchedule}
+                          title="Add schedule"
+                        >
                           <span className="btn-icon" aria-hidden="true">+</span>
-                          Add schedule
+                          Add
                         </Button>
                       </div>
                     </div>
@@ -4224,8 +4784,10 @@ export const Dashboard = () => {
                         </div>
                         <Button
                           variant="ghost"
+                          className="btn-tone-info"
                           onClick={() => loadVoicePresenceLogs(true)}
                           disabled={voicePresenceLogsLoading}
+                          title="Refresh"
                         >
                           {voicePresenceLogsLoading ? "Refreshing..." : "Refresh"}
                         </Button>
@@ -4254,13 +4816,19 @@ export const Dashboard = () => {
                                   <span className="muted">{log.totalMembers} members</span>
                                 </div>
                                 <div className="presence-log-actions">
-                                  <Button variant="ghost" onClick={() => setActivePresenceLog(log)}>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => setActivePresenceLog(log)}
+                                    title="View details"
+                                  >
                                     Details
                                   </Button>
                                   <Button
                                     variant="ghost"
+                                    className="btn-tone-danger"
                                     onClick={() => handleDeletePresenceLog(log.id)}
                                     disabled={voicePresenceLogDeletingId === log.id}
+                                    title="Delete snapshot"
                                   >
                                     {voicePresenceLogDeletingId === log.id
                                       ? "Deleting..."
@@ -4323,6 +4891,7 @@ export const Dashboard = () => {
                     <p className="muted">No triggers yet.</p>
                     <Button
                       variant="outline"
+                      className="btn-tone-success"
                       onClick={() => {
                         const id = createId();
                         setEmojiRows((prev) => [
@@ -4331,9 +4900,10 @@ export const Dashboard = () => {
                         ]);
                         setActiveEmojiTriggerId(id);
                       }}
+                      title="Add trigger"
                     >
                       <span className="btn-icon" aria-hidden="true">+</span>
-                      Add trigger
+                      Add
                     </Button>
                   </div>
                 ) : (
@@ -4381,15 +4951,18 @@ export const Dashboard = () => {
                                 event.stopPropagation();
                                 setActiveEmojiTriggerId(trigger.id);
                               }}
+                              title="Edit trigger"
                             >
                               Edit
                             </Button>
                             <Button
                               variant="ghost"
+                              className="btn-tone-danger"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 removeEmojiRow(trigger.id);
                               }}
+                              title="Remove trigger"
                             >
                               Remove
                             </Button>
@@ -4402,6 +4975,7 @@ export const Dashboard = () => {
                 <div className="section-actions">
                   <Button
                     variant="outline"
+                    className="btn-tone-success"
                     onClick={() => {
                       const id = createId();
                       setEmojiRows((prev) => [
@@ -4414,9 +4988,10 @@ export const Dashboard = () => {
                       ]);
                       setActiveEmojiTriggerId(id);
                     }}
+                    title="Add trigger"
                   >
                     <span className="btn-icon" aria-hidden="true">+</span>
-                    Add trigger
+                    Add
                   </Button>
                 </div>
                 <p className="muted">
@@ -4465,9 +5040,14 @@ export const Dashboard = () => {
                   roleReactionMessages.length === 0 ? (
                     <div className="empty-state">
                       <p className="muted">Create your first reaction message.</p>
-                      <Button variant="outline" onClick={addRoleReactionMessage}>
+                      <Button
+                        variant="outline"
+                        className="btn-tone-success"
+                        onClick={addRoleReactionMessage}
+                        title="Add message"
+                      >
                         <span className="btn-icon" aria-hidden="true">+</span>
-                        Add message
+                        Add
                       </Button>
                     </div>
                   ) : (
@@ -4548,15 +5128,18 @@ export const Dashboard = () => {
                                   event.stopPropagation();
                                   setActiveRoleReactionKey(message.key);
                                 }}
+                                title="Edit message"
                               >
                                 Edit
                               </Button>
                               <Button
                                 variant="ghost"
+                                className="btn-tone-danger"
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   removeRoleReactionMessage(message.key);
                                 }}
+                                title="Remove message"
                               >
                                 Remove
                               </Button>
@@ -4570,9 +5153,14 @@ export const Dashboard = () => {
                   <p className="muted">Role reactions are disabled.</p>
                 )}
                 <div className="section-actions">
-                  <Button variant="outline" onClick={addRoleReactionMessage}>
+                  <Button
+                    variant="outline"
+                    className="btn-tone-success"
+                    onClick={addRoleReactionMessage}
+                    title="Add message"
+                  >
                     <span className="btn-icon" aria-hidden="true">+</span>
-                    Add message
+                    Add
                   </Button>
                 </div>
               </div>
@@ -4624,8 +5212,10 @@ export const Dashboard = () => {
                   </div>
                   <Button
                     variant="ghost"
+                    className="btn-tone-info"
                     onClick={() => loadAdminLogs("conqbot", true)}
                     disabled={adminLogsLoading.conqbot}
+                    title="Refresh"
                   >
                     {adminLogsLoading.conqbot ? "Refreshing..." : "Refresh"}
                   </Button>
@@ -4705,8 +5295,10 @@ export const Dashboard = () => {
                   </div>
                   <Button
                     variant="ghost"
+                    className="btn-tone-info"
                     onClick={() => loadAdminLogs("botpanel", true)}
                     disabled={adminLogsLoading.botpanel}
+                    title="Refresh"
                   >
                     {adminLogsLoading.botpanel ? "Refreshing..." : "Refresh"}
                   </Button>
@@ -4780,8 +5372,10 @@ export const Dashboard = () => {
                   </label>
                   <Button
                     variant="outline"
+                    className="btn-tone-success"
                     onClick={handleAddAdminUser}
                     disabled={adminUsersLoading}
+                    title="Add admin"
                   >
                     {adminUsersLoading ? "Saving..." : "Add admin"}
                   </Button>
@@ -4797,7 +5391,7 @@ export const Dashboard = () => {
                         <span>{userId}</span>
                         <button
                           type="button"
-                          className="btn btn-ghost"
+                          className="btn btn-ghost btn-tone-danger"
                           onClick={() => handleRemoveAdminUser(userId)}
                         >
                           Remove
@@ -4937,7 +5531,7 @@ export const Dashboard = () => {
                                 <span>{roleNameById.get(roleId) ?? roleId}</span>
                                 <button
                                   type="button"
-                                  className="btn btn-ghost"
+                                  className="btn btn-ghost btn-tone-danger"
                                   onClick={() => removeWarthogRole(roleId)}
                                 >
                                   Remove
@@ -4960,7 +5554,12 @@ export const Dashboard = () => {
                           placeholder="e.g. 1234567890, 9876543210"
                         />
                       </label>
-                      <Button variant="outline" onClick={addWarthogWhitelist}>
+                      <Button
+                        variant="outline"
+                        className="btn-tone-success"
+                        onClick={addWarthogWhitelist}
+                        title="Add to whitelist"
+                      >
                         Add to whitelist
                       </Button>
                     </div>
@@ -4974,7 +5573,7 @@ export const Dashboard = () => {
                             <span>{userId}</span>
                             <button
                               type="button"
-                              className="btn btn-ghost"
+                              className="btn btn-ghost btn-tone-danger"
                               onClick={() => removeWarthogWhitelist(userId)}
                             >
                               Remove
@@ -5024,7 +5623,6 @@ export const Dashboard = () => {
             className="modal-overlay"
             role="dialog"
             aria-modal="true"
-            onClick={closeEmojiModal}
           >
             <div className="modal-panel modal-panel--wide" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
@@ -5041,6 +5639,7 @@ export const Dashboard = () => {
                 <div className="modal-actions">
                   <Button
                     variant="ghost"
+                    className="btn-tone-danger"
                     onClick={() => {
                       removeEmojiRow(activeEmojiTrigger.id);
                       closeEmojiModal();
@@ -5199,6 +5798,7 @@ export const Dashboard = () => {
                       </div>
                       <Button
                         variant="ghost"
+                        className="btn-tone-danger"
                         onClick={() => removeEmojiImage(activeEmojiTrigger.id, image.id)}
                       >
                         Remove
@@ -5207,8 +5807,13 @@ export const Dashboard = () => {
                   ))}
                 </div>
                 <div className="section-actions">
-                  <Button variant="ghost" onClick={() => addEmojiImage(activeEmojiTrigger.id)}>
-                    Add image
+                  <Button
+                    variant="ghost"
+                    className="btn-tone-success"
+                    onClick={() => addEmojiImage(activeEmojiTrigger.id)}
+                    title="Add image"
+                  >
+                    Add
                   </Button>
                   <span className="muted">
                     Uploads: {countEmojiUploads(emojiRows)}/{maxEmojiUploads} · Links are unlimited.
@@ -5224,7 +5829,6 @@ export const Dashboard = () => {
             className="modal-overlay"
             role="dialog"
             aria-modal="true"
-            onClick={closeRoleReactionModal}
           >
             <div className="modal-panel modal-panel--wide" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
@@ -5241,6 +5845,7 @@ export const Dashboard = () => {
                 <div className="modal-actions">
                   <Button
                     variant="ghost"
+                    className="btn-tone-danger"
                     onClick={() => {
                       removeRoleReactionMessage(activeRoleReactionMessage.key);
                       closeRoleReactionModal();
@@ -5291,29 +5896,39 @@ export const Dashboard = () => {
                   </div>
                   {activeRoleReactionMessage.type === "text" ? (
                     <>
-                      <label>
+                      <label className="composer-field">
                         Message text
-                        <textarea
-                          rows={3}
-                          value={activeRoleReactionMessage.message}
-                          onChange={(event) =>
-                            updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
-                              ...prev,
-                              message: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                      <div className="composer-tools">
-                        <div className="emoji-select">
-                          <button
-                            type="button"
-                            className="emoji-select-trigger"
-                            onClick={() => toggleMessageEmojiPicker("text")}
-                          >
-                            <span className="emoji-select-placeholder">😊</span>
-                            <span>Add emoji</span>
-                          </button>
+                        <div className="composer-input">
+                          <textarea
+                            rows={3}
+                            value={activeRoleReactionMessage.message}
+                            onChange={(event) =>
+                              updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                                ...prev,
+                                message: event.target.value,
+                              }))
+                            }
+                          />
+                          <div className="composer-corner">
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Insert emoji"
+                              aria-label="Insert emoji"
+                              onClick={() => toggleMessageEmojiPicker("text")}
+                            >
+                              😊
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Mention role"
+                              aria-label="Mention role"
+                              onClick={() => toggleMessageRolePicker("text")}
+                            >
+                              @
+                            </button>
+                          </div>
                           {messageEmojiOpen && messageEmojiTarget === "text" ? (
                             <div className="emoji-select-menu emoji-select-menu--wide">
                               <input
@@ -5380,27 +5995,28 @@ export const Dashboard = () => {
                               </div>
                             </div>
                           ) : null}
+                          {messageRoleOpen && messageRoleTarget === "text" ? (
+                            <div className="composer-popover">
+                              <SearchableSelect
+                                value={roleMentionPick}
+                                onChange={(value) =>
+                                  handleRoleMentionInsert(
+                                    activeRoleReactionMessage.key,
+                                    value,
+                                    "text"
+                                  )
+                                }
+                                options={roles.map((role) => ({
+                                  value: role.id,
+                                  label: stripRolePrefix(role.name),
+                                }))}
+                                placeholder="Search roles..."
+                                emptyLabel="Select role"
+                              />
+                            </div>
+                          ) : null}
                         </div>
-                        <label className="composer-mention">
-                          Mention role
-                          <SearchableSelect
-                            value={roleMentionPick}
-                            onChange={(value) =>
-                              handleRoleMentionInsert(
-                                activeRoleReactionMessage.key,
-                                value,
-                                "text"
-                              )
-                            }
-                            options={roles.map((role) => ({
-                              value: role.id,
-                              label: stripRolePrefix(role.name),
-                            }))}
-                            placeholder="Search roles..."
-                            emptyLabel="Select role"
-                          />
-                        </label>
-                      </div>
+                      </label>
                     </>
                   ) : (
                     <>
@@ -5421,35 +6037,48 @@ export const Dashboard = () => {
                           }
                         />
                       </label>
-                      <label>
+                      <label className="composer-field">
                         Embed description
-                        <textarea
-                          rows={3}
-                          value={activeRoleReactionMessage.embed?.description ?? activeRoleReactionMessage.message}
-                          onChange={(event) =>
-                            updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
-                              ...prev,
-                              message: event.target.value,
-                              embed: {
-                                ...prev.embed,
-                                title: prev.embed?.title ?? "Choose your role",
-                                description: event.target.value,
-                                color: prev.embed?.color ?? "#2f7cff",
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-                      <div className="composer-tools">
-                        <div className="emoji-select">
-                          <button
-                            type="button"
-                            className="emoji-select-trigger"
-                            onClick={() => toggleMessageEmojiPicker("embed")}
-                          >
-                            <span className="emoji-select-placeholder">😊</span>
-                            <span>Add emoji</span>
-                          </button>
+                        <div className="composer-input">
+                          <textarea
+                            rows={3}
+                            value={
+                              activeRoleReactionMessage.embed?.description ??
+                              activeRoleReactionMessage.message
+                            }
+                            onChange={(event) =>
+                              updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                                ...prev,
+                                message: event.target.value,
+                                embed: {
+                                  ...prev.embed,
+                                  title: prev.embed?.title ?? "Choose your role",
+                                  description: event.target.value,
+                                  color: prev.embed?.color ?? "#2f7cff",
+                                },
+                              }))
+                            }
+                          />
+                          <div className="composer-corner">
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Insert emoji"
+                              aria-label="Insert emoji"
+                              onClick={() => toggleMessageEmojiPicker("embed")}
+                            >
+                              😊
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              title="Mention role"
+                              aria-label="Mention role"
+                              onClick={() => toggleMessageRolePicker("embed")}
+                            >
+                              @
+                            </button>
+                          </div>
                           {messageEmojiOpen && messageEmojiTarget === "embed" ? (
                             <div className="emoji-select-menu emoji-select-menu--wide">
                               <input
@@ -5516,27 +6145,28 @@ export const Dashboard = () => {
                               </div>
                             </div>
                           ) : null}
+                          {messageRoleOpen && messageRoleTarget === "embed" ? (
+                            <div className="composer-popover">
+                              <SearchableSelect
+                                value={roleMentionPick}
+                                onChange={(value) =>
+                                  handleRoleMentionInsert(
+                                    activeRoleReactionMessage.key,
+                                    value,
+                                    "embed"
+                                  )
+                                }
+                                options={roles.map((role) => ({
+                                  value: role.id,
+                                  label: stripRolePrefix(role.name),
+                                }))}
+                                placeholder="Search roles..."
+                                emptyLabel="Select role"
+                              />
+                            </div>
+                          ) : null}
                         </div>
-                        <label className="composer-mention">
-                          Mention role
-                          <SearchableSelect
-                            value={roleMentionPick}
-                            onChange={(value) =>
-                              handleRoleMentionInsert(
-                                activeRoleReactionMessage.key,
-                                value,
-                                "embed"
-                              )
-                            }
-                            options={roles.map((role) => ({
-                              value: role.id,
-                              label: stripRolePrefix(role.name),
-                            }))}
-                            placeholder="Search roles..."
-                            emptyLabel="Select role"
-                          />
-                        </label>
-                      </div>
+                      </label>
                       <label className="color-input">
                         Accent color
                         <input
@@ -5683,7 +6313,7 @@ export const Dashboard = () => {
                           </label>
                           <button
                             type="button"
-                            className="btn btn-ghost"
+                            className="btn btn-ghost btn-tone-danger"
                             onClick={() =>
                               removeRoleReactionPair(activeRoleReactionMessage.key, pairIndex)
                             }
@@ -5698,9 +6328,11 @@ export const Dashboard = () => {
                 <div className="section-actions">
                   <Button
                     variant="ghost"
+                    className="btn-tone-success"
                     onClick={() => addRoleReactionPair(activeRoleReactionMessage.key)}
+                    title="Add reaction"
                   >
-                    Add reaction
+                    Add
                   </Button>
                 </div>
               </div>
@@ -5713,7 +6345,6 @@ export const Dashboard = () => {
             className="modal-overlay"
             role="dialog"
             aria-modal="true"
-            onClick={closePresenceScheduleModal}
           >
             <div className="modal-panel" onClick={(event) => event.stopPropagation()}>
               <div className="modal-header">
@@ -5725,6 +6356,7 @@ export const Dashboard = () => {
                 <div className="modal-actions">
                   <Button
                     variant="ghost"
+                    className="btn-tone-danger"
                     onClick={() => {
                       removeVoicePresenceSchedule(activePresenceSchedule.id);
                       closePresenceScheduleModal();
@@ -5832,7 +6464,6 @@ export const Dashboard = () => {
             className="presence-modal-overlay"
             role="dialog"
             aria-modal="true"
-            onClick={() => setActivePresenceLog(null)}
           >
             <div className="presence-modal" onClick={(event) => event.stopPropagation()}>
               <div className="presence-modal-header">
