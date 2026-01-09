@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   createEvent,
@@ -28,6 +28,7 @@ import {
   updateVoicePresenceSettings,
   runVoicePresence,
   getVoicePresenceLogs,
+  deleteVoicePresenceLog,
   updateRoleReactions,
   updateWelcomeSettings,
   updateWarthog,
@@ -695,6 +696,8 @@ export const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [serverReloadToken, setServerReloadToken] = useState(0);
+  const activeServerIdRef = useRef<string | null>(null);
 
   const [metadata, setMetadata] = useState<ServerMetadata>(emptyMetadata);
   const [welcomeSettings, setWelcomeSettings] = useState<WelcomeSettings>(emptyWelcome);
@@ -720,7 +723,9 @@ export const Dashboard = () => {
   const [emojiOptions, setEmojiOptions] = useState<EmojiOption[]>([]);
   const [emojiOptionsLoading, setEmojiOptionsLoading] = useState(false);
   const [emojiSaving, setEmojiSaving] = useState(false);
+  const [activeEmojiTriggerId, setActiveEmojiTriggerId] = useState<string | null>(null);
   const [activeEmojiPickerId, setActiveEmojiPickerId] = useState<string | null>(null);
+  const [emojiSearch, setEmojiSearch] = useState("");
   const [emojiRequireExact, setEmojiRequireExact] = useState(false);
   const [emojiBaseline, setEmojiBaseline] = useState<EmojiTriggerSettings>({
     triggers: [],
@@ -736,7 +741,9 @@ export const Dashboard = () => {
   const [voicePresenceSaving, setVoicePresenceSaving] = useState(false);
   const [voicePresenceRunning, setVoicePresenceRunning] = useState(false);
   const [voicePresenceLogOffset, setVoicePresenceLogOffset] = useState(0);
+  const [voicePresenceLogDeletingId, setVoicePresenceLogDeletingId] = useState<string | null>(null);
   const [activePresenceLog, setActivePresenceLog] = useState<VoicePresenceLog | null>(null);
+  const [presenceTab, setPresenceTab] = useState<"manual" | "schedule" | "history">("manual");
 
   const [activeRoleEmojiPickerId, setActiveRoleEmojiPickerId] = useState<string | null>(null);
   const [roleEmojiSearch, setRoleEmojiSearch] = useState("");
@@ -744,6 +751,7 @@ export const Dashboard = () => {
   const [roleReactions, setRoleReactions] =
     useState<RoleReactionSettings>(emptyRoleReactions);
   const [roleReactionMessages, setRoleReactionMessages] = useState<RoleReactionMessageDraft[]>([]);
+  const [activeRoleReactionKey, setActiveRoleReactionKey] = useState<string | null>(null);
   const [roleReactionsSaving, setRoleReactionsSaving] = useState(false);
   const [roleReactionsBaseline, setRoleReactionsBaseline] =
     useState<RoleReactionSettings>(emptyRoleReactions);
@@ -759,6 +767,7 @@ export const Dashboard = () => {
     conqbot: "all",
     botpanel: "all",
   });
+  const [adminTab, setAdminTab] = useState<"conqbot" | "botpanel" | "access">("conqbot");
   const [adminLogCategory, setAdminLogCategory] = useState<AdminLogCategory>("all");
   const [adminLogsLoading, setAdminLogsLoading] = useState<Record<LogSource, boolean>>({
     conqbot: false,
@@ -772,7 +781,7 @@ export const Dashboard = () => {
   const [warthogSettings, setWarthogSettings] = useState<WarthogSettings>(emptyWarthog);
   const [warthogBaseline, setWarthogBaseline] = useState<WarthogSettings>(emptyWarthog);
   const [warthogSaving, setWarthogSaving] = useState(false);
-  const [warthogRoleQuery, setWarthogRoleQuery] = useState("");
+  const [warthogRolePick, setWarthogRolePick] = useState("");
   const [warthogWhitelistInput, setWarthogWhitelistInput] = useState("");
 
   const [autoroleSettings, setAutoroleSettings] = useState<AutoRoleSettings>(emptyAutorole);
@@ -841,6 +850,10 @@ export const Dashboard = () => {
   }, [activeSection]);
 
   useEffect(() => {
+    activeServerIdRef.current = activeServerId;
+  }, [activeServerId]);
+
+  useEffect(() => {
     setLoaded(emptyLoadedState);
     setSectionLoading(emptyLoadingState);
     setMetadata(emptyMetadata);
@@ -854,6 +867,8 @@ export const Dashboard = () => {
     setEmojiOptionsLoading(false);
     setEmojiRequireExact(false);
     setEmojiBaseline({ triggers: [], requireExact: false });
+    setActiveEmojiTriggerId(null);
+    setEmojiSearch("");
     setVoicePresenceSettings(emptyVoicePresenceSettings);
     setVoicePresenceBaseline(emptyVoicePresenceSettings);
     setVoicePresenceLogs([]);
@@ -861,30 +876,41 @@ export const Dashboard = () => {
     setVoicePresenceLogsLoading(false);
     setVoicePresenceSaving(false);
     setVoicePresenceRunning(false);
+    setVoicePresenceLogDeletingId(null);
     setActivePresenceLog(null);
+    setPresenceTab("manual");
     setRoleReactions(emptyRoleReactions);
     setRoleReactionMessages([]);
     setRoleReactionsBaseline(emptyRoleReactions);
+    setActiveRoleReactionKey(null);
     setWarthogSettings(emptyWarthog);
     setWarthogBaseline(emptyWarthog);
-    setWarthogRoleQuery("");
+    setWarthogRolePick("");
     setWarthogWhitelistInput("");
     setAutoroleSettings(emptyAutorole);
     setAutoroleBaseline(emptyAutorole);
     setActiveEmojiPickerId(null);
     setActiveRoleEmojiPickerId(null);
     setRoleEmojiSearch("");
+    setAdminTab("conqbot");
     setError(null);
     setSuccess(null);
     setEditingEventId(null);
     setEventForm(emptyEventForm);
     setEventFormBaseline(emptyEventForm);
     setEventBaselineEditingId(null);
+    setServerReloadToken((prev) => prev + 1);
   }, [activeServerId]);
 
   useEffect(() => {
     setError(null);
     setSuccess(null);
+    setActiveEmojiTriggerId(null);
+    setActiveEmojiPickerId(null);
+    setEmojiSearch("");
+    setActiveRoleReactionKey(null);
+    setActiveRoleEmojiPickerId(null);
+    setRoleEmojiSearch("");
   }, [activeSection]);
 
   useEffect(() => {
@@ -899,6 +925,7 @@ export const Dashboard = () => {
       if (!target?.closest(".emoji-select")) {
         setActiveEmojiPickerId(null);
         setActiveRoleEmojiPickerId(null);
+        setEmojiSearch("");
         setRoleEmojiSearch("");
       }
     };
@@ -912,6 +939,8 @@ export const Dashboard = () => {
     () => servers.find((server) => server.id === activeServerId) ?? null,
     [servers, activeServerId]
   );
+
+  const isActiveServer = (serverId: string | null) => activeServerIdRef.current === serverId;
 
   const conqbotLogCounts = useMemo(() => {
     return conqbotLogCategories.reduce(
@@ -1032,139 +1061,199 @@ export const Dashboard = () => {
   }, [roles, autoroleSettings.roleId]);
 
   const loadMetadata = async () => {
-    if (!activeServerId || loaded.metadata || sectionLoading.metadata) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.metadata || sectionLoading.metadata) {
       return;
     }
     updateSectionLoading("metadata", true);
     try {
-      const data = await getServerMetadata(activeServerId);
+      const data = await getServerMetadata(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setMetadata(data);
       updateLoaded("metadata", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load metadata.");
-      updateLoaded("metadata", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load metadata.");
+        updateLoaded("metadata", true);
+      }
     } finally {
-      updateSectionLoading("metadata", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("metadata", false);
+      }
     }
   };
 
   const loadWelcome = async () => {
-    if (!activeServerId || loaded.welcome || sectionLoading.welcome) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.welcome || sectionLoading.welcome) {
       return;
     }
     updateSectionLoading("welcome", true);
     try {
-      const data = await getWelcomeSettings(activeServerId);
+      const data = await getWelcomeSettings(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setWelcomeSettings(data);
       setWelcomeBaseline(data);
       updateLoaded("welcome", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load welcome settings.");
-      updateLoaded("welcome", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load welcome settings.");
+        updateLoaded("welcome", true);
+      }
     } finally {
-      updateSectionLoading("welcome", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("welcome", false);
+      }
     }
   };
 
   const loadFarewell = async () => {
-    if (!activeServerId || loaded.farewell || sectionLoading.farewell) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.farewell || sectionLoading.farewell) {
       return;
     }
     updateSectionLoading("farewell", true);
     try {
-      const data = await getFarewellSettings(activeServerId);
+      const data = await getFarewellSettings(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setFarewellSettings(data);
       setFarewellBaseline(data);
       updateLoaded("farewell", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load farewell settings.");
-      updateLoaded("farewell", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load farewell settings.");
+        updateLoaded("farewell", true);
+      }
     } finally {
-      updateSectionLoading("farewell", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("farewell", false);
+      }
     }
   };
 
   const loadEvents = async () => {
-    if (!activeServerId || loaded.events || sectionLoading.events) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.events || sectionLoading.events) {
       return;
     }
     updateSectionLoading("events", true);
     try {
-      const data = await getEvents(activeServerId);
+      const data = await getEvents(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setEvents(data);
       updateLoaded("events", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load events.");
-      updateLoaded("events", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load events.");
+        updateLoaded("events", true);
+      }
     } finally {
-      updateSectionLoading("events", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("events", false);
+      }
     }
   };
 
   const loadEmojiTriggers = async () => {
-    if (!activeServerId || loaded.emoji || sectionLoading.emoji) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.emoji || sectionLoading.emoji) {
       return;
     }
     updateSectionLoading("emoji", true);
     try {
-      const data = await getEmojiTriggers(activeServerId);
+      const data = await getEmojiTriggers(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setEmojiRows(buildEmojiRows(data.triggers));
       setEmojiRequireExact(data.requireExact);
       setEmojiBaseline(data);
       updateLoaded("emoji", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load emoji triggers.");
-      updateLoaded("emoji", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load emoji triggers.");
+        updateLoaded("emoji", true);
+      }
     } finally {
-      updateSectionLoading("emoji", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("emoji", false);
+      }
     }
   };
 
   const loadVoicePresence = async () => {
-    if (!activeServerId || loaded.presence || sectionLoading.presence) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.presence || sectionLoading.presence) {
       return;
     }
     updateSectionLoading("presence", true);
     try {
-      const data = await getVoicePresenceSettings(activeServerId);
+      const data = await getVoicePresenceSettings(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setVoicePresenceSettings(data);
       setVoicePresenceBaseline(data);
       updateLoaded("presence", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load voice presence settings.");
-      updateLoaded("presence", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load voice presence settings.");
+        updateLoaded("presence", true);
+      }
     } finally {
-      updateSectionLoading("presence", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("presence", false);
+      }
     }
   };
 
   const loadVoicePresenceLogs = async (reset = false) => {
-    if (!activeServerId || voicePresenceLogsLoading) {
+    const serverId = activeServerId;
+    if (!serverId || voicePresenceLogsLoading) {
       return;
     }
     setVoicePresenceLogsLoading(true);
     try {
       const offset = reset ? 0 : voicePresenceLogOffset;
-      const logs = await getVoicePresenceLogs(activeServerId, {
+      const logs = await getVoicePresenceLogs(serverId, {
         limit: 20,
         offset,
       });
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setVoicePresenceLogs((prev) => (reset ? logs : [...prev, ...logs]));
       setVoicePresenceLogOffset(offset + logs.length);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load presence logs.");
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load presence logs.");
+      }
     } finally {
-      setVoicePresenceLogsLoading(false);
+      if (isActiveServer(serverId)) {
+        setVoicePresenceLogsLoading(false);
+      }
     }
   };
 
   const loadRoleReactions = async () => {
-    if (!activeServerId || loaded.roleReactions || sectionLoading.roleReactions) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.roleReactions || sectionLoading.roleReactions) {
       return;
     }
     updateSectionLoading("roleReactions", true);
     try {
-      const data = await getRoleReactions(activeServerId);
+      const data = await getRoleReactions(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       const fallbackChannel = channels[0]?.id ?? "";
       const messages = buildRoleReactionMessages(data.messages, fallbackChannel);
       setRoleReactions({ ...data, messages });
@@ -1172,61 +1261,89 @@ export const Dashboard = () => {
       setRoleReactionsBaseline({ ...data, messages });
       updateLoaded("roleReactions", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load role reactions.");
-      updateLoaded("roleReactions", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load role reactions.");
+        updateLoaded("roleReactions", true);
+      }
     } finally {
-      updateSectionLoading("roleReactions", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("roleReactions", false);
+      }
     }
   };
 
   const loadEmojiOptions = async () => {
-    if (!activeServerId || emojiOptionsLoading || emojiOptions.length > 0) {
+    const serverId = activeServerId;
+    if (!serverId || emojiOptionsLoading || emojiOptions.length > 0) {
       return;
     }
     setEmojiOptionsLoading(true);
     try {
-      const data = await getEmojis(activeServerId);
+      const data = await getEmojis(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setEmojiOptions(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load emojis.");
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load emojis.");
+      }
     } finally {
-      setEmojiOptionsLoading(false);
+      if (isActiveServer(serverId)) {
+        setEmojiOptionsLoading(false);
+      }
     }
   };
 
   const loadWarthog = async () => {
-    if (!activeServerId || loaded.warthog || sectionLoading.warthog) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.warthog || sectionLoading.warthog) {
       return;
     }
     updateSectionLoading("warthog", true);
     try {
-      const settings = await getWarthog(activeServerId);
+      const settings = await getWarthog(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setWarthogSettings(settings);
       setWarthogBaseline(settings);
       updateLoaded("warthog", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load Warthog settings.");
-      updateLoaded("warthog", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load Warthog settings.");
+        updateLoaded("warthog", true);
+      }
     } finally {
-      updateSectionLoading("warthog", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("warthog", false);
+      }
     }
   };
 
   const loadAutorole = async () => {
-    if (!activeServerId || loaded.autorole || sectionLoading.autorole) {
+    const serverId = activeServerId;
+    if (!serverId || loaded.autorole || sectionLoading.autorole) {
       return;
     }
     updateSectionLoading("autorole", true);
     try {
-      const data = await getAutorole(activeServerId);
+      const data = await getAutorole(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
       setAutoroleSettings(data);
       setAutoroleBaseline(data);
       updateLoaded("autorole", true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load auto role settings.");
-      updateLoaded("autorole", true);
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load auto role settings.");
+        updateLoaded("autorole", true);
+      }
     } finally {
-      updateSectionLoading("autorole", false);
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("autorole", false);
+      }
     }
   };
 
@@ -1346,7 +1463,7 @@ export const Dashboard = () => {
       void loadAdminLogs("conqbot", true);
       void loadAdminLogs("botpanel", true);
     }
-  }, [activeSection, activeServerId]);
+  }, [activeSection, activeServerId, serverReloadToken]);
 
   const handleInvite = async () => {
     setInviteLoading(true);
@@ -1368,6 +1485,8 @@ export const Dashboard = () => {
       setError("Save or discard your changes before switching servers.");
       return;
     }
+    setLoaded(emptyLoadedState);
+    setSectionLoading(emptyLoadingState);
     setActiveServerId(serverId);
   };
 
@@ -1694,6 +1813,12 @@ export const Dashboard = () => {
     });
   };
 
+  const closeEmojiModal = () => {
+    setActiveEmojiTriggerId(null);
+    setActiveEmojiPickerId(null);
+    setEmojiSearch("");
+  };
+
   const countEmojiUploads = (rows: TriggerRow[]) =>
     rows.reduce(
       (count, row) =>
@@ -1797,6 +1922,9 @@ export const Dashboard = () => {
       setEmojiRequireExact(updated.requireExact);
       setEmojiRows(buildEmojiRows(updated.triggers));
       setEmojiBaseline(updated);
+      setActiveEmojiTriggerId(null);
+      setActiveEmojiPickerId(null);
+      setEmojiSearch("");
       setSuccess("Emoji triggers saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save emoji triggers.");
@@ -1894,6 +2022,31 @@ export const Dashboard = () => {
     }
   };
 
+  const handleDeletePresenceLog = async (logId?: string | null) => {
+    if (!activeServerId || !logId) {
+      return;
+    }
+    const confirmed = window.confirm("Delete this presence log?");
+    if (!confirmed) {
+      return;
+    }
+    setVoicePresenceLogDeletingId(logId);
+    setError(null);
+    setSuccess(null);
+    try {
+      await deleteVoicePresenceLog(activeServerId, logId);
+      setVoicePresenceLogs((prev) => prev.filter((log) => log.id !== logId));
+      if (activePresenceLog?.id === logId) {
+        setActivePresenceLog(null);
+      }
+      setSuccess("Presence log deleted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete presence log.");
+    } finally {
+      setVoicePresenceLogDeletingId(null);
+    }
+  };
+
   const updateRoleReactionMessage = (
     key: string,
     updater: (message: RoleReactionMessageDraft) => RoleReactionMessageDraft
@@ -1905,11 +2058,23 @@ export const Dashboard = () => {
 
   const addRoleReactionMessage = () => {
     const fallbackChannel = channels[0]?.id ?? "";
-    setRoleReactionMessages((prev) => [...prev, createRoleReactionMessage(fallbackChannel)]);
+    const message = createRoleReactionMessage(fallbackChannel);
+    setRoleReactions((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
+    setRoleReactionMessages((prev) => [...prev, message]);
+    setActiveRoleReactionKey(message.key);
   };
 
   const removeRoleReactionMessage = (key: string) => {
     setRoleReactionMessages((prev) => prev.filter((message) => message.key !== key));
+    if (activeRoleReactionKey === key) {
+      setActiveRoleReactionKey(null);
+    }
+  };
+
+  const closeRoleReactionModal = () => {
+    setActiveRoleReactionKey(null);
+    setActiveRoleEmojiPickerId(null);
+    setRoleEmojiSearch("");
   };
 
   const addRoleReactionPair = (messageKey: string) => {
@@ -1944,11 +2109,7 @@ export const Dashboard = () => {
       return;
     }
 
-    if (roleReactions.enabled) {
-      if (roleReactionMessages.length === 0) {
-        setError("Add at least one reaction message.");
-        return;
-      }
+    if (roleReactions.enabled && roleReactionMessages.length > 0) {
       for (const message of roleReactionMessages) {
         if (!message.channelId) {
           setError("Pick a channel for every reaction message.");
@@ -1980,8 +2141,9 @@ export const Dashboard = () => {
     setError(null);
     setSuccess(null);
     try {
+      const enabled = roleReactions.enabled && roleReactionMessages.length > 0;
       const payload: RoleReactionSettings = {
-        enabled: roleReactions.enabled,
+        enabled,
         messages: roleReactionMessages.map((message) => ({
           key: message.key,
           channelId: message.channelId,
@@ -1998,6 +2160,9 @@ export const Dashboard = () => {
       setRoleReactions({ ...saved, messages });
       setRoleReactionMessages(messages);
       setRoleReactionsBaseline({ ...saved, messages });
+      setActiveRoleReactionKey(null);
+      setActiveRoleEmojiPickerId(null);
+      setRoleEmojiSearch("");
       setSuccess("Role reactions saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save role reactions.");
@@ -2008,6 +2173,27 @@ export const Dashboard = () => {
 
   const handleWarthogToggle = () => {
     setWarthogSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
+  };
+
+  const handleWarthogRoleSelect = (roleId: string) => {
+    if (!roleId) {
+      setWarthogRolePick("");
+      return;
+    }
+    setWarthogSettings((prev) => ({
+      ...prev,
+      allowedRoles: prev.allowedRoles.includes(roleId)
+        ? prev.allowedRoles
+        : [...prev.allowedRoles, roleId],
+    }));
+    setWarthogRolePick("");
+  };
+
+  const removeWarthogRole = (roleId: string) => {
+    setWarthogSettings((prev) => ({
+      ...prev,
+      allowedRoles: prev.allowedRoles.filter((id) => id !== roleId),
+    }));
   };
 
   const handleWarthogSave = async () => {
@@ -2139,13 +2325,35 @@ export const Dashboard = () => {
     return map;
   }, [channels]);
 
-  const emojiMap = useMemo(() => {
+  const roleNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    roles.forEach((role) => {
+      map.set(role.id, stripRolePrefix(role.name));
+    });
+    return map;
+  }, [roles]);
+
+  const triggerEmojiOptions = useMemo(() => {
+    return [...emojiOptions, ...defaultEmojiOptions];
+  }, [emojiOptions]);
+
+  const triggerEmojiMap = useMemo(() => {
     const map = new Map<string, EmojiOption>();
-    emojiOptions.forEach((emoji) => {
+    triggerEmojiOptions.forEach((emoji) => {
       map.set(emoji.id, emoji);
     });
     return map;
-  }, [emojiOptions]);
+  }, [triggerEmojiOptions]);
+
+  const activeEmojiTrigger = useMemo(
+    () => emojiRows.find((row) => row.id === activeEmojiTriggerId) ?? null,
+    [emojiRows, activeEmojiTriggerId]
+  );
+
+  const activeRoleReactionMessage = useMemo(
+    () => roleReactionMessages.find((message) => message.key === activeRoleReactionKey) ?? null,
+    [roleReactionMessages, activeRoleReactionKey]
+  );
 
   const roleEmojiOptions = useMemo(() => {
     return [...emojiOptions, ...defaultEmojiOptions];
@@ -2159,15 +2367,38 @@ export const Dashboard = () => {
     return map;
   }, [roleEmojiOptions]);
 
-  const warthogRoleQueryNormalized = warthogRoleQuery.trim().toLowerCase();
-  const filteredWarthogRoles = useMemo(() => {
-    if (!warthogRoleQueryNormalized) {
-      return roles;
+  const warthogRoleOptions = useMemo(
+    () =>
+      roles.map((role) => ({
+        value: role.id,
+        label: stripRolePrefix(role.name),
+        disabled: warthogSettings.allowedRoles.includes(role.id),
+      })),
+    [roles, warthogSettings.allowedRoles]
+  );
+
+  const triggerEmojiQuery = emojiSearch.trim().toLowerCase();
+  const filteredTriggerCustomEmojis = useMemo(() => {
+    if (!triggerEmojiQuery) {
+      return emojiOptions;
     }
-    return roles.filter((role) =>
-      stripRolePrefix(role.name).toLowerCase().includes(warthogRoleQueryNormalized)
+    return emojiOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(triggerEmojiQuery) ||
+        option.id.toLowerCase().includes(triggerEmojiQuery)
     );
-  }, [roles, warthogRoleQueryNormalized]);
+  }, [emojiOptions, triggerEmojiQuery]);
+
+  const filteredTriggerDefaultEmojis = useMemo(() => {
+    if (!triggerEmojiQuery) {
+      return defaultEmojiOptions;
+    }
+    return defaultEmojiOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(triggerEmojiQuery) ||
+        option.id.toLowerCase().includes(triggerEmojiQuery)
+    );
+  }, [triggerEmojiQuery]);
 
   const roleEmojiQuery = roleEmojiSearch.trim().toLowerCase();
   const filteredRoleCustomEmojis = useMemo(() => {
@@ -2346,6 +2577,8 @@ export const Dashboard = () => {
       setEmojiRequireExact(emojiBaseline.requireExact);
       setEmojiRows(buildEmojiRows(emojiBaseline.triggers));
       setActiveEmojiPickerId(null);
+      setActiveEmojiTriggerId(null);
+      setEmojiSearch("");
       return;
     }
     if (activeSection === "presence") {
@@ -2357,6 +2590,9 @@ export const Dashboard = () => {
       const messages = buildRoleReactionMessages(roleReactionsBaseline.messages, fallbackChannel);
       setRoleReactions({ ...roleReactionsBaseline, messages });
       setRoleReactionMessages(messages);
+      setActiveRoleReactionKey(null);
+      setActiveRoleEmojiPickerId(null);
+      setRoleEmojiSearch("");
       return;
     }
     if (activeSection === "autorole") {
@@ -2365,7 +2601,7 @@ export const Dashboard = () => {
     }
     if (activeSection === "other") {
       setWarthogSettings(warthogBaseline);
-      setWarthogRoleQuery("");
+      setWarthogRolePick("");
       setWarthogWhitelistInput("");
       return;
     }
@@ -3698,237 +3934,281 @@ export const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="content-grid content-grid--presence">
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>Manual capture</h3>
-                      <p className="muted">
-                        Choose which voice channels to scan. Empty = all voice channels.
-                      </p>
-                    </div>
-                    <Button onClick={handleVoicePresenceRun} disabled={voicePresenceRunning}>
-                      {voicePresenceRunning ? "Capturing..." : "Fetch presence"}
-                    </Button>
-                  </div>
-                  <div className="form-grid">
-                    <label>
-                      Capture name
-                      <input
-                        value={voicePresenceSettings.manualName ?? ""}
-                        onChange={(event) =>
-                          setVoicePresenceSettings((prev) => ({
-                            ...prev,
-                            manualName: event.target.value,
-                          }))
-                        }
-                        placeholder="e.g. Weekly voice check"
-                      />
-                    </label>
-                  </div>
-                  {voiceChannels.length === 0 ? (
-                    <p className="muted">No voice channels found on this server.</p>
-                  ) : (
-                    <div className="presence-channel-grid presence-channel-grid--scroll">
-                      {voiceChannels.map((channel) => (
-                        <label key={channel.id} className="presence-channel-option">
+              <div className="presence-shell">
+                <div className="tab-row">
+                  {[
+                    { key: "manual", label: "Manual capture" },
+                    { key: "schedule", label: "Scheduled capture" },
+                    { key: "history", label: "History" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      className={`tab-button ${presenceTab === tab.key ? "active" : ""}`}
+                      onClick={() =>
+                        setPresenceTab(tab.key as "manual" | "schedule" | "history")
+                      }
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {presenceTab === "manual" ? (
+                  <div className="presence-pane">
+                    <div className="card">
+                      <div className="card-header">
+                        <div>
+                          <h3>Manual capture</h3>
+                          <p className="muted">
+                            Pick channels to scan or leave empty for all voice channels.
+                          </p>
+                        </div>
+                        <Button onClick={handleVoicePresenceRun} disabled={voicePresenceRunning}>
+                          {voicePresenceRunning ? "Capturing..." : "Fetch presence"}
+                        </Button>
+                      </div>
+                      <div className="form-grid">
+                        <label>
+                          Capture name
                           <input
-                            type="checkbox"
-                            checked={voicePresenceSettings.manualChannelIds.includes(channel.id)}
-                            onChange={() =>
+                            value={voicePresenceSettings.manualName ?? ""}
+                            onChange={(event) =>
                               setVoicePresenceSettings((prev) => ({
                                 ...prev,
-                                manualChannelIds: toggleSelection(
-                                  prev.manualChannelIds,
-                                  channel.id
-                                ),
+                                manualName: event.target.value,
                               }))
                             }
+                            placeholder="e.g. Weekly voice check"
                           />
-                          <span>{channel.name}</span>
                         </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>Scheduled capture</h3>
-                      <p className="muted">
-                        Schedule weekly snapshots for the selected channels.
-                      </p>
-                    </div>
-                    <Button variant="ghost" onClick={addVoicePresenceSchedule}>
-                      Add schedule
-                    </Button>
-                  </div>
-                  {voicePresenceSettings.schedules.length === 0 ? (
-                    <div className="empty-state">
-                      <p className="muted">No schedules yet.</p>
-                    </div>
-                  ) : (
-                    <div className="presence-schedule-list">
-                      {voicePresenceSettings.schedules.map((schedule, index) => (
-                        <div key={schedule.id} className="presence-schedule-card">
-                          <div className="card-header">
-                            <div>
-                              <h4>Schedule {index + 1}</h4>
-                              <p className="muted">
-                                Last run: {schedule.lastRun || "Never"}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              className="btn btn-ghost"
-                              onClick={() => removeVoicePresenceSchedule(schedule.id)}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          <div className="form-grid">
-                            <label>
-                              Schedule name
-                              <input
-                                value={schedule.name ?? ""}
-                                onChange={(event) =>
-                                  updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                    ...prev,
-                                    name: event.target.value,
-                                  }))
-                                }
-                                placeholder="e.g. Saturday raid check"
-                              />
-                            </label>
-                          </div>
-                          <div className="form-grid split">
-                            <label>
-                              Day of week
-                              <select
-                                value={schedule.dayOfWeek}
-                                onChange={(event) =>
-                                  updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                    ...prev,
-                                    dayOfWeek: Number(event.target.value),
-                                  }))
-                                }
-                              >
-                                {presenceDays.map((day) => (
-                                  <option key={day.value} value={day.value}>
-                                    {day.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label>
-                              Time
-                              <input
-                                type="time"
-                                value={schedule.time}
-                                onChange={(event) =>
-                                  updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                    ...prev,
-                                    time: event.target.value,
-                                  }))
-                                }
-                              />
-                            </label>
-                          </div>
-                          <div className="switch-row">
-                            <label className="switch-control">
+                      </div>
+                      {voiceChannels.length === 0 ? (
+                        <p className="muted">No voice channels found on this server.</p>
+                      ) : (
+                        <div className="presence-channel-grid presence-channel-grid--scroll">
+                          {voiceChannels.map((channel) => (
+                            <label key={channel.id} className="presence-channel-option">
                               <input
                                 type="checkbox"
-                                checked={schedule.enabled}
+                                checked={voicePresenceSettings.manualChannelIds.includes(channel.id)}
                                 onChange={() =>
-                                  updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                  setVoicePresenceSettings((prev) => ({
                                     ...prev,
-                                    enabled: !prev.enabled,
+                                    manualChannelIds: toggleSelection(
+                                      prev.manualChannelIds,
+                                      channel.id
+                                    ),
                                   }))
                                 }
                               />
+                              <span>{channel.name}</span>
                             </label>
-                            <span className="switch-label">Enabled</span>
-                          </div>
-                          <div className="presence-channel-grid presence-channel-grid--scroll">
-                            {voiceChannels.map((channel) => (
-                              <label key={channel.id} className="presence-channel-option">
-                                <input
-                                  type="checkbox"
-                                  checked={schedule.channelIds.includes(channel.id)}
-                                  onChange={() =>
-                                    updateVoicePresenceSchedule(schedule.id, (prev) => ({
-                                      ...prev,
-                                      channelIds: toggleSelection(prev.channelIds, channel.id),
-                                    }))
-                                  }
-                                />
-                                <span>{channel.name}</span>
-                              </label>
-                            ))}
-                          </div>
-                          {voiceChannels.length === 0 ? (
-                            <p className="muted">No voice channels available.</p>
-                          ) : null}
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                ) : null}
 
-              <div className="card">
-                <div className="card-header">
-                  <div>
-                    <h3>Presence history</h3>
-                    <p className="muted">All snapshots from manual and scheduled runs.</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => loadVoicePresenceLogs(true)}
-                    disabled={voicePresenceLogsLoading}
-                  >
-                    {voicePresenceLogsLoading ? "Refreshing..." : "Refresh"}
-                  </Button>
-                </div>
-                {voicePresenceLogs.length === 0 ? (
-                  <p className="muted">No snapshots stored yet.</p>
-                ) : (
-                  <div className="presence-log-table">
-                    {voicePresenceLogs.map((log) => {
-                      const name =
-                        log.name ||
-                        (log.source === "schedule"
-                          ? "Scheduled capture"
-                          : "Manual capture");
-                      return (
-                        <div key={log.id ?? log.createdAt} className="presence-log-row">
-                          <div>
-                            <strong>{name}</strong>
-                            <p className="muted">{formatLogTime(log.createdAt ?? "")}</p>
-                          </div>
-                          <div className="presence-log-meta">
-                            <span className="pill neutral">
-                              {log.source === "schedule" ? "Scheduled" : "Manual"}
-                            </span>
-                            <span className="muted">{log.totalChannels} channels</span>
-                            <span className="muted">{log.totalMembers} members</span>
-                          </div>
-                          <Button variant="ghost" onClick={() => setActivePresenceLog(log)}>
-                            Details
-                          </Button>
+                {presenceTab === "schedule" ? (
+                  <div className="presence-pane">
+                    <div className="card">
+                      <div className="card-header">
+                        <div>
+                          <h3>Scheduled capture</h3>
+                          <p className="muted">
+                            Plan recurring snapshots for chosen voice channels.
+                          </p>
                         </div>
-                      );
-                    })}
+                        <Button variant="ghost" onClick={addVoicePresenceSchedule}>
+                          Add schedule
+                        </Button>
+                      </div>
+                      {voicePresenceSettings.schedules.length === 0 ? (
+                        <div className="empty-state">
+                          <p className="muted">No schedules yet.</p>
+                        </div>
+                      ) : (
+                        <div className="presence-schedule-list">
+                          {voicePresenceSettings.schedules.map((schedule, index) => (
+                            <div key={schedule.id} className="presence-schedule-card">
+                              <div className="card-header">
+                                <div>
+                                  <h4>Schedule {index + 1}</h4>
+                                  <p className="muted">
+                                    Last run: {schedule.lastRun || "Never"}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost"
+                                  onClick={() => removeVoicePresenceSchedule(schedule.id)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <div className="form-grid">
+                                <label>
+                                  Schedule name
+                                  <input
+                                    value={schedule.name ?? ""}
+                                    onChange={(event) =>
+                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                        ...prev,
+                                        name: event.target.value,
+                                      }))
+                                    }
+                                    placeholder="e.g. Saturday raid check"
+                                  />
+                                </label>
+                              </div>
+                              <div className="form-grid split">
+                                <label>
+                                  Day of week
+                                  <select
+                                    value={schedule.dayOfWeek}
+                                    onChange={(event) =>
+                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                        ...prev,
+                                        dayOfWeek: Number(event.target.value),
+                                      }))
+                                    }
+                                  >
+                                    {presenceDays.map((day) => (
+                                      <option key={day.value} value={day.value}>
+                                        {day.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label>
+                                  Time
+                                  <input
+                                    type="time"
+                                    value={schedule.time}
+                                    onChange={(event) =>
+                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                        ...prev,
+                                        time: event.target.value,
+                                      }))
+                                    }
+                                  />
+                                </label>
+                              </div>
+                              <div className="switch-row">
+                                <label className="switch-control">
+                                  <input
+                                    type="checkbox"
+                                    checked={schedule.enabled}
+                                    onChange={() =>
+                                      updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                        ...prev,
+                                        enabled: !prev.enabled,
+                                      }))
+                                    }
+                                  />
+                                </label>
+                                <span className="switch-label">Enabled</span>
+                              </div>
+                              <div className="presence-channel-grid presence-channel-grid--scroll">
+                                {voiceChannels.map((channel) => (
+                                  <label key={channel.id} className="presence-channel-option">
+                                    <input
+                                      type="checkbox"
+                                      checked={schedule.channelIds.includes(channel.id)}
+                                      onChange={() =>
+                                        updateVoicePresenceSchedule(schedule.id, (prev) => ({
+                                          ...prev,
+                                          channelIds: toggleSelection(prev.channelIds, channel.id),
+                                        }))
+                                      }
+                                    />
+                                    <span>{channel.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                              {voiceChannels.length === 0 ? (
+                                <p className="muted">No voice channels available.</p>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={() => loadVoicePresenceLogs(false)}
-                  disabled={voicePresenceLogsLoading}
-                >
-                  Load more
-                </Button>
+                ) : null}
+
+                {presenceTab === "history" ? (
+                  <div className="presence-pane">
+                    <div className="card">
+                      <div className="card-header">
+                        <div>
+                          <h3>Presence history</h3>
+                          <p className="muted">
+                            All snapshots from manual and scheduled runs.
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          onClick={() => loadVoicePresenceLogs(true)}
+                          disabled={voicePresenceLogsLoading}
+                        >
+                          {voicePresenceLogsLoading ? "Refreshing..." : "Refresh"}
+                        </Button>
+                      </div>
+                      {voicePresenceLogs.length === 0 ? (
+                        <p className="muted">No snapshots stored yet.</p>
+                      ) : (
+                        <div className="presence-log-table">
+                          {voicePresenceLogs.map((log) => {
+                            const name =
+                              log.name ||
+                              (log.source === "schedule"
+                                ? "Scheduled capture"
+                                : "Manual capture");
+                            return (
+                              <div key={log.id ?? log.createdAt} className="presence-log-row">
+                                <div>
+                                  <strong>{name}</strong>
+                                  <p className="muted">{formatLogTime(log.createdAt ?? "")}</p>
+                                </div>
+                                <div className="presence-log-meta">
+                                  <span className="pill neutral">
+                                    {log.source === "schedule" ? "Scheduled" : "Manual"}
+                                  </span>
+                                  <span className="muted">{log.totalChannels} channels</span>
+                                  <span className="muted">{log.totalMembers} members</span>
+                                </div>
+                                <div className="presence-log-actions">
+                                  <Button variant="ghost" onClick={() => setActivePresenceLog(log)}>
+                                    Details
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => handleDeletePresenceLog(log.id)}
+                                    disabled={voicePresenceLogDeletingId === log.id}
+                                  >
+                                    {voicePresenceLogDeletingId === log.id
+                                      ? "Deleting..."
+                                      : "Delete"}
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        onClick={() => loadVoicePresenceLogs(false)}
+                        disabled={voicePresenceLogsLoading}
+                      >
+                        Load more
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
           )
@@ -3957,16 +4237,18 @@ export const Dashboard = () => {
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={() =>
+                    onClick={() => {
+                      const id = createId();
                       setEmojiRows((prev) => [
                         ...prev,
                         {
-                          id: createId(),
+                          id,
                           emoji: "",
                           images: [createEmojiImageRow()],
                         },
-                      ])
-                    }
+                      ]);
+                      setActiveEmojiTriggerId(id);
+                    }}
                   >
                     Add trigger
                   </Button>
@@ -3989,150 +4271,86 @@ export const Dashboard = () => {
                 <p className="muted">
                   When disabled, the image will send if the emoji appears anywhere in the message.
                 </p>
-                <div className="trigger-list">
-                  {emojiRows.map((trigger) => {
-                    const emojiOption = emojiMap.get(trigger.emoji);
-                    const pickerOpen = activeEmojiPickerId === trigger.id;
-                    const pickerLabel =
-                      emojiOption?.name ?? (trigger.emoji ? "Unknown emoji" : "Select emoji");
-                    return (
-                      <div key={trigger.id} className="trigger-card">
-                        <div className="trigger-header">
-                          <div className="trigger-emoji">
-                            <span className="muted">Emoji</span>
-                            <div className="emoji-select">
-                              <button
-                                type="button"
-                                className="emoji-select-trigger"
-                                onClick={() =>
-                                  setActiveEmojiPickerId(pickerOpen ? null : trigger.id)
-                                }
-                              >
-                                {emojiOption?.url ? (
-                                  <img src={emojiOption.url} alt={emojiOption.name} />
-                                ) : (
-                                  <span className="emoji-select-placeholder">🙂</span>
-                                )}
-                                <span>{pickerLabel}</span>
-                              </button>
-                              {pickerOpen ? (
-                                <div className="emoji-select-menu">
-                                  {emojiOptions.map((option) => (
-                                    <button
-                                      key={option.id}
-                                      type="button"
-                                      className="emoji-option"
-                                      onClick={() => {
-                                        updateEmojiRow(trigger.id, (row) => ({
-                                          ...row,
-                                          emoji: option.id,
-                                        }));
-                                        setActiveEmojiPickerId(null);
-                                      }}
-                                    >
-                                      {option.url ? (
-                                        <img src={option.url} alt={option.name} />
-                                      ) : (
-                                        <span className="emoji-glyph">{option.id}</span>
-                                      )}
-                                      <span>{option.name}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
+                {emojiRows.length === 0 ? (
+                  <div className="empty-state">
+                    <p className="muted">No triggers yet.</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const id = createId();
+                        setEmojiRows((prev) => [
+                          ...prev,
+                          { id, emoji: "", images: [createEmojiImageRow()] },
+                        ]);
+                        setActiveEmojiTriggerId(id);
+                      }}
+                    >
+                      Add trigger
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="trigger-summary-list">
+                    {emojiRows.map((trigger) => {
+                      const emojiOption = triggerEmojiMap.get(trigger.emoji);
+                      return (
+                        <div
+                          key={trigger.id}
+                          className="trigger-summary-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setActiveEmojiTriggerId(trigger.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setActiveEmojiTriggerId(trigger.id);
+                            }
+                          }}
+                        >
+                          <div className="trigger-summary-info">
+                            <div className="trigger-summary-emoji">
+                              {emojiOption?.url ? (
+                                <img src={emojiOption.url} alt={emojiOption.name} />
+                              ) : (
+                                <span className="emoji-select-placeholder">
+                                  {emojiOption?.id || trigger.emoji || "🙂"}
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <strong>
+                                {emojiOption?.name ?? (trigger.emoji || "Unassigned emoji")}
+                              </strong>
+                              <p className="muted">
+                                {trigger.images.length} image
+                                {trigger.images.length === 1 ? "" : "s"}
+                              </p>
                             </div>
                           </div>
-                          <div className="trigger-actions">
-                            <button
-                              type="button"
-                              className="btn btn-ghost"
-                              onClick={() => removeEmojiRow(trigger.id)}
+                          <div className="trigger-summary-actions">
+                            <Button
+                              variant="ghost"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setActiveEmojiTriggerId(trigger.id);
+                              }}
                             >
-                              Remove trigger
-                            </button>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeEmojiRow(trigger.id);
+                              }}
+                            >
+                              Remove
+                            </Button>
                           </div>
                         </div>
-                        <div className="trigger-images">
-                          {trigger.images.map((image, index) => {
-                            const previewSource = image.uploadFile
-                              ? image.previewUrl
-                              : image.imageUrl;
-                            return (
-                              <div key={image.id} className="trigger-image-row">
-                                <div className="trigger-media">
-                                  <label>
-                                    Image {index + 1} URL
-                                    <input
-                                      type="url"
-                                      value={image.imageUrl}
-                                      onChange={(event) =>
-                                        updateEmojiImage(trigger.id, image.id, (prev) => ({
-                                          ...prev,
-                                          imageUrl: event.target.value,
-                                          uploadFile: null,
-                                          previewUrl: "",
-                                        }))
-                                      }
-                                      placeholder="https://..."
-                                    />
-                                  </label>
-                                  <div className="trigger-upload">
-                                    <input
-                                      type="file"
-                                      accept="image/png,image/jpeg,image/webp,image/gif"
-                                      onChange={(event) => {
-                                        const file = event.target.files?.[0] ?? null;
-                                        if (!file) {
-                                          updateEmojiImage(trigger.id, image.id, (prev) => ({
-                                            ...prev,
-                                            uploadFile: null,
-                                            previewUrl: "",
-                                            uploading: false,
-                                          }));
-                                          return;
-                                        }
-                                        if (file.size > maxUploadBytes) {
-                                          setError("Uploads must be 5MB or smaller.");
-                                          event.currentTarget.value = "";
-                                          return;
-                                        }
-                                        void handleEmojiUpload(trigger.id, image.id, file);
-                                      }}
-                                    />
-                                    <span className="muted">
-                                      {image.uploading
-                                        ? "Uploading image..."
-                                        : "Upload image (max 5MB)."}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="trigger-preview">
-                                  {previewSource ? (
-                                    <img src={previewSource} alt="Trigger preview" />
-                                  ) : (
-                                    <span className="muted">No image</span>
-                                  )}
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn btn-ghost"
-                                  onClick={() => removeEmojiImage(trigger.id, image.id)}
-                                >
-                                  Remove image
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="section-actions">
-                          <Button variant="ghost" onClick={() => addEmojiImage(trigger.id)}>
-                            Add image
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
                 <p className="muted">
                   Uploads: {countEmojiUploads(emojiRows)}/{maxEmojiUploads}. Links are unlimited.
                 </p>
@@ -4172,12 +4390,15 @@ export const Dashboard = () => {
                     <input
                       type="checkbox"
                       checked={roleReactions.enabled}
-                      onChange={() =>
+                      onChange={() => {
+                        if (roleReactions.enabled) {
+                          closeRoleReactionModal();
+                        }
                         setRoleReactions((prev) => ({
                           ...prev,
                           enabled: !prev.enabled,
-                        }))
-                      }
+                        }));
+                      }}
                       aria-label="Enable role reactions"
                     />
                   </label>
@@ -4192,271 +4413,94 @@ export const Dashboard = () => {
                       </Button>
                     </div>
                   ) : (
-                    <div className="reaction-message-list">
+                    <div className="reaction-summary-list">
                       {roleReactionMessages.map((message, messageIndex) => {
+                        const channelLabel =
+                          channelNameById.get(message.channelId) ?? "Pick a channel";
+                        const previewSource =
+                          message.type === "text"
+                            ? message.message
+                            : message.embed?.title ?? message.message;
+                        const trimmed = previewSource?.trim() ?? "";
+                        const previewText =
+                          trimmed.length > 80 ? `${trimmed.slice(0, 80)}...` : trimmed || "No message text yet.";
+                        const emojiPairs = message.pairs.filter((pair) => pair.emoji);
+                        const emojiPreview = emojiPairs.slice(0, 6);
+
                         return (
-                          <div key={message.key} className="reaction-message-card">
-                            <div className="card-header">
-                              <div>
-                                <h3>Reaction message {messageIndex + 1}</h3>
-                                <p className="muted">
-                                  {channelNameById.get(message.channelId) ?? "Pick a channel"}
-                                </p>
+                          <div
+                            key={message.key}
+                            className="reaction-summary-card"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setActiveRoleReactionKey(message.key)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setActiveRoleReactionKey(message.key);
+                              }
+                            }}
+                          >
+                            <div className="reaction-summary-main">
+                              <div className="reaction-summary-header">
+                                <div>
+                                  <strong>Reaction message {messageIndex + 1}</strong>
+                                  <p className="muted">{channelLabel}</p>
+                                </div>
+                                <span className="pill neutral">
+                                  {message.type === "embed" ? "Embed" : "Text"}
+                                </span>
                               </div>
-                              <button
-                                type="button"
-                                className="btn btn-ghost"
-                                onClick={() => removeRoleReactionMessage(message.key)}
-                              >
-                                Remove message
-                              </button>
-                            </div>
-                            <div className="form-grid">
-                              <div className="form-grid split">
-                                <label>
-                                  Channel
-                                  <SearchableSelect
-                                    value={message.channelId}
-                                    onChange={(value) =>
-                                      updateRoleReactionMessage(message.key, (prev) => ({
-                                        ...prev,
-                                        channelId: value,
-                                      }))
-                                    }
-                                    options={channels.map((channel) => ({
-                                      value: channel.id,
-                                      label: channel.name,
-                                    }))}
-                                    placeholder="Search channels..."
-                                  />
-                                </label>
-                                <label>
-                                  Message type
-                                  <select
-                                    value={message.type}
-                                    onChange={(event) =>
-                                      updateRoleReactionMessage(message.key, (prev) => ({
-                                        ...prev,
-                                        type: event.target.value === "embed" ? "embed" : "text",
-                                      }))
-                                    }
-                                  >
-                                    <option value="text">Text</option>
-                                    <option value="embed">Embed</option>
-                                  </select>
-                                </label>
-                              </div>
-                              {message.type === "text" ? (
-                                <label>
-                                  Message text
-                                  <textarea
-                                    rows={3}
-                                    value={message.message}
-                                    onChange={(event) =>
-                                      updateRoleReactionMessage(message.key, (prev) => ({
-                                        ...prev,
-                                        message: event.target.value,
-                                      }))
-                                    }
-                                  />
-                                  <span className="muted">Emoji are supported in the message.</span>
-                                </label>
-                              ) : (
-                                <>
-                                  <label>
-                                    Embed title
-                                    <input
-                                      value={message.embed?.title ?? ""}
-                                      onChange={(event) =>
-                                        updateRoleReactionMessage(message.key, (prev) => ({
-                                          ...prev,
-                                          embed: {
-                                            ...prev.embed,
-                                            title: event.target.value,
-                                            description: prev.embed?.description ?? prev.message,
-                                            color: prev.embed?.color ?? "#2f7cff",
-                                          },
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label>
-                                    Embed description
-                                    <textarea
-                                      rows={3}
-                                      value={message.embed?.description ?? message.message}
-                                      onChange={(event) =>
-                                        updateRoleReactionMessage(message.key, (prev) => ({
-                                          ...prev,
-                                          message: event.target.value,
-                                          embed: {
-                                            ...prev.embed,
-                                            title: prev.embed?.title ?? "Choose your role",
-                                            description: event.target.value,
-                                            color: prev.embed?.color ?? "#2f7cff",
-                                          },
-                                        }))
-                                      }
-                                    />
-                                  </label>
-                                  <label className="color-input">
-                                    Accent color
-                                    <input
-                                      type="color"
-                                      value={message.embed?.color ?? "#2f7cff"}
-                                      onChange={(event) =>
-                                        updateRoleReactionMessage(message.key, (prev) => ({
-                                          ...prev,
-                                          embed: {
-                                            ...prev.embed,
-                                            title: prev.embed?.title ?? "Choose your role",
-                                            description: prev.embed?.description ?? prev.message,
-                                            color: event.target.value,
-                                          },
-                                        }))
-                                      }
-                                    />
-                                    <span className="color-value">
-                                      {message.embed?.color ?? "#2f7cff"}
-                                    </span>
-                                  </label>
-                                </>
-                              )}
-                            </div>
-                            <div className="reaction-list">
-                              {message.pairs.length === 0 ? (
-                                <p className="muted">Add at least one emoji/role pair.</p>
-                              ) : (
-                                message.pairs.map((pair, pairIndex) => {
-                                  const emojiOption = roleEmojiMap.get(pair.emoji);
-                                  const pickerId = `${message.key}-${pairIndex}`;
-                                  const pickerOpen = activeRoleEmojiPickerId === pickerId;
-                                  const pickerLabel =
-                                    emojiOption?.name ??
-                                    (pair.emoji ? "Custom emoji" : "Select emoji");
-                                  return (
-                                    <div key={pickerId} className="reaction-row">
-                                      <div className="emoji-select">
-                                        <button
-                                          type="button"
-                                          className="emoji-select-trigger"
-                                          onClick={() => {
-                                            setActiveEmojiPickerId(null);
-                                            setActiveRoleEmojiPickerId(pickerOpen ? null : pickerId);
-                                            setRoleEmojiSearch("");
-                                          }}
+                              <p className="muted">{previewText}</p>
+                              <div className="reaction-summary-emojis">
+                                {emojiPreview.length === 0 ? (
+                                  <span className="muted">No reactions yet.</span>
+                                ) : (
+                                  <>
+                                    {emojiPreview.map((pair, pairIndex) => {
+                                      const emojiOption = roleEmojiMap.get(pair.emoji);
+                                      return (
+                                        <span
+                                          key={`${message.key}-${pairIndex}`}
+                                          className="emoji-chip"
                                         >
                                           {emojiOption?.url ? (
                                             <img src={emojiOption.url} alt={emojiOption.name} />
-                                          ) : pair.emoji ? (
-                                            <span className="emoji-glyph">{pair.emoji}</span>
                                           ) : (
-                                            <span className="emoji-select-placeholder">🙂</span>
+                                            <span className="emoji-glyph">
+                                              {emojiOption?.id ?? pair.emoji}
+                                            </span>
                                           )}
-                                          <span>{pickerLabel}</span>
-                                        </button>
-                                        {pickerOpen ? (
-                                          <div className="emoji-select-menu emoji-select-menu--wide">
-                                            <input
-                                              className="emoji-search"
-                                              placeholder="Search emoji..."
-                                              value={roleEmojiSearch}
-                                              onChange={(event) => setRoleEmojiSearch(event.target.value)}
-                                            />
-                                            <div className="emoji-group">
-                                              <span className="emoji-group-label">Server emojis</span>
-                                              <div className="emoji-grid">
-                                                {filteredRoleCustomEmojis.length === 0 ? (
-                                                  <span className="muted">No matches.</span>
-                                                ) : (
-                                                  filteredRoleCustomEmojis.map((option) => (
-                                                    <button
-                                                      key={option.id}
-                                                      type="button"
-                                                      className="emoji-option"
-                                                      onClick={() => {
-                                                        updateRoleReactionPair(
-                                                          message.key,
-                                                          pairIndex,
-                                                          (prev) => ({ ...prev, emoji: option.id })
-                                                        );
-                                                        setActiveRoleEmojiPickerId(null);
-                                                        setRoleEmojiSearch("");
-                                                      }}
-                                                    >
-                                                      {option.url ? (
-                                                        <img src={option.url} alt={option.name} />
-                                                      ) : (
-                                                        <span className="emoji-glyph">{option.id}</span>
-                                                      )}
-                                                      <span>{option.name}</span>
-                                                    </button>
-                                                  ))
-                                                )}
-                                              </div>
-                                            </div>
-                                            <div className="emoji-group">
-                                              <span className="emoji-group-label">Default emojis</span>
-                                              <div className="emoji-grid">
-                                                {filteredRoleDefaultEmojis.map((option) => (
-                                                  <button
-                                                    key={option.id}
-                                                    type="button"
-                                                    className="emoji-option"
-                                                    onClick={() => {
-                                                      updateRoleReactionPair(
-                                                        message.key,
-                                                        pairIndex,
-                                                        (prev) => ({ ...prev, emoji: option.id })
-                                                      );
-                                                      setActiveRoleEmojiPickerId(null);
-                                                      setRoleEmojiSearch("");
-                                                    }}
-                                                  >
-                                                    <span className="emoji-glyph">{option.id}</span>
-                                                    <span>{option.name}</span>
-                                                  </button>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                      <label>
-                                        Role
-                                        <SearchableSelect
-                                          value={pair.roleId}
-                                          onChange={(value) =>
-                                            updateRoleReactionPair(message.key, pairIndex, (prev) => ({
-                                              ...prev,
-                                              roleId: value,
-                                            }))
-                                          }
-                                          options={roles.map((role) => ({
-                                            value: role.id,
-                                            label: stripRolePrefix(role.name),
-                                          }))}
-                                          placeholder="Search roles..."
-                                        />
-                                      </label>
-                                      <button
-                                        type="button"
-                                        className="btn btn-ghost"
-                                        onClick={() => removeRoleReactionPair(message.key, pairIndex)}
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  );
-                                })
-                              )}
+                                        </span>
+                                      );
+                                    })}
+                                    {emojiPairs.length > emojiPreview.length ? (
+                                      <span className="pill neutral">
+                                        +{emojiPairs.length - emojiPreview.length}
+                                      </span>
+                                    ) : null}
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <div className="section-actions">
+                            <div className="reaction-summary-actions">
                               <Button
                                 variant="ghost"
-                                onClick={() => addRoleReactionPair(message.key)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setActiveRoleReactionKey(message.key);
+                                }}
                               >
-                                Add reaction
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  removeRoleReactionMessage(message.key);
+                                }}
+                              >
+                                Remove
                               </Button>
                             </div>
                           </div>
@@ -4483,202 +4527,226 @@ export const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="content-grid content-grid--admin">
-              <div className="card-stack">
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>ConqBot logs</h3>
-                      <p className="muted">Backend logs captured from the bot runtime.</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => loadAdminLogs("conqbot", true)}
-                      disabled={adminLogsLoading.conqbot}
-                    >
-                      {adminLogsLoading.conqbot ? "Refreshing..." : "Refresh"}
-                    </Button>
-                  </div>
-                  <div className="form-grid split">
-                    <label>
-                      Level
-                      <select
-                        value={adminLogLevels.conqbot}
-                        onChange={(event) => handleAdminLevelChange("conqbot", event.target.value)}
-                      >
-                        <option value="all">All</option>
-                        <option value="INFO">Info</option>
-                        <option value="WARNING">Warning</option>
-                        <option value="ERROR">Error</option>
-                        <option value="CRITICAL">Critical</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="log-filters">
-                    {conqbotLogCategories.map((category) => (
-                      <button
-                        key={category.key}
-                        type="button"
-                        className={`log-filter log-filter--${category.tone} ${
-                          adminLogCategory === category.key ? "active" : ""
-                        }`}
-                        onClick={() => setAdminLogCategory(category.key)}
-                      >
-                        <span className="log-filter-icon">{category.icon}</span>
-                        <span>{category.label}</span>
-                        <span className="log-filter-count">{conqbotLogCounts[category.key]}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="log-list">
-                    {filteredConqbotLogs.length === 0 ? (
-                      <p className="muted">No logs in this category.</p>
-                    ) : (
-                      filteredConqbotLogs.map((logItem) => (
-                        <div key={logItem.id ?? logItem.timestamp} className="log-entry">
-                          <div className="log-meta">
-                            <span className={`pill log-level log-${logItem.level.toLowerCase()}`}>
-                              {logItem.level}
-                            </span>
-                            <span className="muted">{formatLogTime(logItem.timestamp)}</span>
-                            {logItem.logger ? (
-                              <span className="muted">{logItem.logger}</span>
-                            ) : null}
-                          </div>
-                          <p>{logItem.message}</p>
-                          {logItem.context && Object.keys(logItem.context).length ? (
-                            <pre className="log-context">
-                              {JSON.stringify(logItem.context, null, 2)}
-                            </pre>
-                          ) : null}
-                        </div>
-                      ))
-                    )}
+            <div className="tab-row admin-tabs">
+              <button
+                type="button"
+                className={`tab-button ${adminTab === "conqbot" ? "active" : ""}`}
+                onClick={() => setAdminTab("conqbot")}
+              >
+                ConqBot logs
+              </button>
+              <button
+                type="button"
+                className={`tab-button ${adminTab === "botpanel" ? "active" : ""}`}
+                onClick={() => setAdminTab("botpanel")}
+              >
+                BotPanel logs
+              </button>
+              <button
+                type="button"
+                className={`tab-button ${adminTab === "access" ? "active" : ""}`}
+                onClick={() => setAdminTab("access")}
+              >
+                Admin access
+              </button>
+            </div>
+
+            {adminTab === "conqbot" ? (
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <h3>ConqBot logs</h3>
+                    <p className="muted">Backend logs captured from the bot runtime.</p>
                   </div>
                   <Button
-                    variant="outline"
-                    onClick={() => loadAdminLogs("conqbot", false)}
+                    variant="ghost"
+                    onClick={() => loadAdminLogs("conqbot", true)}
                     disabled={adminLogsLoading.conqbot}
                   >
-                    Load more
+                    {adminLogsLoading.conqbot ? "Refreshing..." : "Refresh"}
                   </Button>
                 </div>
-
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>BotPanel logs</h3>
-                      <p className="muted">Frontend errors reported by the dashboard.</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => loadAdminLogs("botpanel", true)}
-                      disabled={adminLogsLoading.botpanel}
+                <div className="form-grid split">
+                  <label>
+                    Level
+                    <select
+                      value={adminLogLevels.conqbot}
+                      onChange={(event) => handleAdminLevelChange("conqbot", event.target.value)}
                     >
-                      {adminLogsLoading.botpanel ? "Refreshing..." : "Refresh"}
-                    </Button>
-                  </div>
-                  <div className="form-grid split">
-                    <label>
-                      Level
-                      <select
-                        value={adminLogLevels.botpanel}
-                        onChange={(event) => handleAdminLevelChange("botpanel", event.target.value)}
-                      >
-                        <option value="all">All</option>
-                        <option value="INFO">Info</option>
-                        <option value="WARNING">Warning</option>
-                        <option value="ERROR">Error</option>
-                        <option value="CRITICAL">Critical</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div className="log-list">
-                    {adminLogs.botpanel.length === 0 ? (
-                      <p className="muted">No logs yet.</p>
-                    ) : (
-                      adminLogs.botpanel.map((logItem) => (
-                        <div key={logItem.id ?? logItem.timestamp} className="log-entry">
-                          <div className="log-meta">
-                            <span className={`pill log-level log-${logItem.level.toLowerCase()}`}>
-                              {logItem.level}
-                            </span>
-                            <span className="muted">{formatLogTime(logItem.timestamp)}</span>
-                            {logItem.userId ? (
-                              <span className="muted">User {logItem.userId}</span>
-                            ) : null}
-                          </div>
-                          <p>{logItem.message}</p>
-                          {logItem.context && Object.keys(logItem.context).length ? (
-                            <pre className="log-context">
-                              {JSON.stringify(logItem.context, null, 2)}
-                            </pre>
+                      <option value="all">All</option>
+                      <option value="INFO">Info</option>
+                      <option value="WARNING">Warning</option>
+                      <option value="ERROR">Error</option>
+                      <option value="CRITICAL">Critical</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="log-filters">
+                  {conqbotLogCategories.map((category) => (
+                    <button
+                      key={category.key}
+                      type="button"
+                      className={`log-filter log-filter--${category.tone} ${
+                        adminLogCategory === category.key ? "active" : ""
+                      }`}
+                      onClick={() => setAdminLogCategory(category.key)}
+                    >
+                      <span className="log-filter-icon">{category.icon}</span>
+                      <span>{category.label}</span>
+                      <span className="log-filter-count">{conqbotLogCounts[category.key]}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="log-list">
+                  {filteredConqbotLogs.length === 0 ? (
+                    <p className="muted">No logs in this category.</p>
+                  ) : (
+                    filteredConqbotLogs.map((logItem) => (
+                      <div key={logItem.id ?? logItem.timestamp} className="log-entry">
+                        <div className="log-meta">
+                          <span className={`pill log-level log-${logItem.level.toLowerCase()}`}>
+                            {logItem.level}
+                          </span>
+                          <span className="muted">{formatLogTime(logItem.timestamp)}</span>
+                          {logItem.logger ? (
+                            <span className="muted">{logItem.logger}</span>
                           ) : null}
                         </div>
-                      ))
-                    )}
+                        <p>{logItem.message}</p>
+                        {logItem.context && Object.keys(logItem.context).length ? (
+                          <pre className="log-context">
+                            {JSON.stringify(logItem.context, null, 2)}
+                          </pre>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => loadAdminLogs("conqbot", false)}
+                  disabled={adminLogsLoading.conqbot}
+                >
+                  Load more
+                </Button>
+              </div>
+            ) : null}
+
+            {adminTab === "botpanel" ? (
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <h3>BotPanel logs</h3>
+                    <p className="muted">Frontend errors reported by the dashboard.</p>
                   </div>
                   <Button
-                    variant="outline"
-                    onClick={() => loadAdminLogs("botpanel", false)}
+                    variant="ghost"
+                    onClick={() => loadAdminLogs("botpanel", true)}
                     disabled={adminLogsLoading.botpanel}
                   >
-                    Load more
+                    {adminLogsLoading.botpanel ? "Refreshing..." : "Refresh"}
                   </Button>
                 </div>
-              </div>
-
-              <div className="card-stack">
-                <div className="card">
-                  <div className="card-header">
-                    <div>
-                      <h3>Admin access</h3>
-                      <p className="muted">Only listed user IDs can open this admin tab.</p>
-                    </div>
-                  </div>
-                  <div className="form-grid">
-                    <label>
-                      Add admin user ID
-                      <input
-                        value={adminUserInput}
-                        onChange={(event) => setAdminUserInput(event.target.value)}
-                        placeholder="Discord user ID"
-                      />
-                    </label>
-                    <Button
-                      variant="outline"
-                      onClick={handleAddAdminUser}
-                      disabled={adminUsersLoading}
+                <div className="form-grid split">
+                  <label>
+                    Level
+                    <select
+                      value={adminLogLevels.botpanel}
+                      onChange={(event) => handleAdminLevelChange("botpanel", event.target.value)}
                     >
-                      {adminUsersLoading ? "Saving..." : "Add admin"}
-                    </Button>
-                  </div>
-                  <div className="admin-user-list">
-                    {adminUsersLoading ? (
-                      <p className="muted">Loading admin users...</p>
-                    ) : adminUsers.length === 0 ? (
-                      <p className="muted">No extra admins added yet.</p>
-                    ) : (
-                      adminUsers.map((userId) => (
-                        <div key={userId} className="admin-user-row">
-                          <span>{userId}</span>
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => handleRemoveAdminUser(userId)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <p className="muted">
-                    IDs from `ADMIN_PANEL_USER_IDS` are always allowed and may not disappear after removal.
-                  </p>
+                      <option value="all">All</option>
+                      <option value="INFO">Info</option>
+                      <option value="WARNING">Warning</option>
+                      <option value="ERROR">Error</option>
+                      <option value="CRITICAL">Critical</option>
+                    </select>
+                  </label>
                 </div>
+                <div className="log-list">
+                  {adminLogs.botpanel.length === 0 ? (
+                    <p className="muted">No logs yet.</p>
+                  ) : (
+                    adminLogs.botpanel.map((logItem) => (
+                      <div key={logItem.id ?? logItem.timestamp} className="log-entry">
+                        <div className="log-meta">
+                          <span className={`pill log-level log-${logItem.level.toLowerCase()}`}>
+                            {logItem.level}
+                          </span>
+                          <span className="muted">{formatLogTime(logItem.timestamp)}</span>
+                          {logItem.userId ? (
+                            <span className="muted">User {logItem.userId}</span>
+                          ) : null}
+                        </div>
+                        <p>{logItem.message}</p>
+                        {logItem.context && Object.keys(logItem.context).length ? (
+                          <pre className="log-context">
+                            {JSON.stringify(logItem.context, null, 2)}
+                          </pre>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => loadAdminLogs("botpanel", false)}
+                  disabled={adminLogsLoading.botpanel}
+                >
+                  Load more
+                </Button>
               </div>
-            </div>
+            ) : null}
+
+            {adminTab === "access" ? (
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <h3>Admin access</h3>
+                    <p className="muted">Only listed user IDs can open this admin tab.</p>
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Add admin user ID
+                    <input
+                      value={adminUserInput}
+                      onChange={(event) => setAdminUserInput(event.target.value)}
+                      placeholder="Discord user ID"
+                    />
+                  </label>
+                  <Button
+                    variant="outline"
+                    onClick={handleAddAdminUser}
+                    disabled={adminUsersLoading}
+                  >
+                    {adminUsersLoading ? "Saving..." : "Add admin"}
+                  </Button>
+                </div>
+                <div className="admin-user-list">
+                  {adminUsersLoading ? (
+                    <p className="muted">Loading admin users...</p>
+                  ) : adminUsers.length === 0 ? (
+                    <p className="muted">No extra admins added yet.</p>
+                  ) : (
+                    adminUsers.map((userId) => (
+                      <div key={userId} className="admin-user-row">
+                        <span>{userId}</span>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => handleRemoveAdminUser(userId)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <p className="muted">
+                  IDs from `ADMIN_PANEL_USER_IDS` are always allowed and may not disappear after removal.
+                </p>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -4793,34 +4861,30 @@ export const Dashboard = () => {
                     {warthogSettings.roleLock ? (
                       <>
                         <label>
-                          Search roles
-                          <input
-                            value={warthogRoleQuery}
-                            onChange={(event) => setWarthogRoleQuery(event.target.value)}
-                            placeholder="Type a role name..."
+                          Add allowed role
+                          <SearchableSelect
+                            value={warthogRolePick}
+                            onChange={handleWarthogRoleSelect}
+                            options={warthogRoleOptions}
+                            placeholder="Search roles..."
+                            emptyLabel="Select role"
                           />
                         </label>
-                        {filteredWarthogRoles.length === 0 ? (
-                          <p className="muted">No roles match your search.</p>
+                        {warthogSettings.allowedRoles.length === 0 ? (
+                          <p className="muted">No allowed roles yet.</p>
                         ) : (
-                          <div className="presence-channel-grid presence-channel-grid--scroll">
-                            {filteredWarthogRoles.map((role) => (
-                              <label key={role.id} className="presence-channel-option">
-                                <input
-                                  type="checkbox"
-                                  checked={warthogSettings.allowedRoles.includes(role.id)}
-                                  onChange={() =>
-                                    setWarthogSettings((prev) => ({
-                                      ...prev,
-                                      allowedRoles: toggleSelection(
-                                        prev.allowedRoles,
-                                        role.id
-                                      ),
-                                    }))
-                                  }
-                                />
-                                <span>{stripRolePrefix(role.name)}</span>
-                              </label>
+                          <div className="role-chip-list">
+                            {warthogSettings.allowedRoles.map((roleId) => (
+                              <div key={roleId} className="role-chip">
+                                <span>{roleNameById.get(roleId) ?? roleId}</span>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost"
+                                  onClick={() => removeWarthogRole(roleId)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             ))}
                           </div>
                         )}
@@ -4897,6 +4961,500 @@ export const Dashboard = () => {
           )
         ) : null}
 
+        {activeEmojiTrigger ? (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={closeEmojiModal}
+          >
+            <div className="modal-panel modal-panel--wide" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <p className="eyebrow">Emoji trigger</p>
+                  <h2>
+                    {triggerEmojiMap.get(activeEmojiTrigger.emoji)?.name ??
+                      (activeEmojiTrigger.emoji || "New trigger")}
+                  </h2>
+                  <p className="muted">
+                    Choose an emoji and attach multiple images or links.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      removeEmojiRow(activeEmojiTrigger.id);
+                      closeEmojiModal();
+                    }}
+                  >
+                    Delete
+                  </Button>
+                  <Button variant="ghost" onClick={closeEmojiModal}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+              <div className="modal-body">
+                <div className="form-grid">
+                  <label>
+                    Emoji
+                    <div className="emoji-select">
+                      <button
+                        type="button"
+                        className="emoji-select-trigger"
+                        onClick={() => {
+                          const pickerOpen = activeEmojiPickerId === activeEmojiTrigger.id;
+                          setActiveRoleEmojiPickerId(null);
+                          setActiveEmojiPickerId(pickerOpen ? null : activeEmojiTrigger.id);
+                          setEmojiSearch("");
+                        }}
+                      >
+                        {triggerEmojiMap.get(activeEmojiTrigger.emoji)?.url ? (
+                          <img
+                            src={triggerEmojiMap.get(activeEmojiTrigger.emoji)?.url}
+                            alt={triggerEmojiMap.get(activeEmojiTrigger.emoji)?.name}
+                          />
+                        ) : activeEmojiTrigger.emoji ? (
+                          <span className="emoji-glyph">{activeEmojiTrigger.emoji}</span>
+                        ) : (
+                          <span className="emoji-select-placeholder">🙂</span>
+                        )}
+                        <span>
+                          {triggerEmojiMap.get(activeEmojiTrigger.emoji)?.name ??
+                            (activeEmojiTrigger.emoji ? "Custom emoji" : "Select emoji")}
+                        </span>
+                      </button>
+                      {activeEmojiPickerId === activeEmojiTrigger.id ? (
+                        <div className="emoji-select-menu emoji-select-menu--wide">
+                          <input
+                            className="emoji-search"
+                            placeholder="Search emoji..."
+                            value={emojiSearch}
+                            onChange={(event) => setEmojiSearch(event.target.value)}
+                          />
+                          <div className="emoji-group">
+                            <span className="emoji-group-label">Server emojis</span>
+                            <div className="emoji-grid">
+                              {filteredTriggerCustomEmojis.length === 0 ? (
+                                <span className="muted">No matches.</span>
+                              ) : (
+                                filteredTriggerCustomEmojis.map((option) => (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    className="emoji-option"
+                                    onClick={() => {
+                                      updateEmojiRow(activeEmojiTrigger.id, (row) => ({
+                                        ...row,
+                                        emoji: option.id,
+                                      }));
+                                      setActiveEmojiPickerId(null);
+                                      setEmojiSearch("");
+                                    }}
+                                  >
+                                    {option.url ? (
+                                      <img src={option.url} alt={option.name} />
+                                    ) : (
+                                      <span className="emoji-glyph">{option.id}</span>
+                                    )}
+                                    <span>{option.name}</span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                          <div className="emoji-group">
+                            <span className="emoji-group-label">Default emojis</span>
+                            <div className="emoji-grid">
+                              {filteredTriggerDefaultEmojis.map((option) => (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  className="emoji-option"
+                                  onClick={() => {
+                                    updateEmojiRow(activeEmojiTrigger.id, (row) => ({
+                                      ...row,
+                                      emoji: option.id,
+                                    }));
+                                    setActiveEmojiPickerId(null);
+                                    setEmojiSearch("");
+                                  }}
+                                >
+                                  <span className="emoji-glyph">{option.id}</span>
+                                  <span>{option.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </label>
+                </div>
+
+                <div className="trigger-images">
+                  {activeEmojiTrigger.images.map((image) => (
+                    <div key={image.id} className="trigger-image-row">
+                      <label>
+                        Image link
+                        <input
+                          value={image.imageUrl}
+                          onChange={(event) =>
+                            updateEmojiImage(activeEmojiTrigger.id, image.id, (prev) => ({
+                              ...prev,
+                              imageUrl: event.target.value,
+                              previewUrl: event.target.value,
+                              uploadFile: null,
+                              uploading: false,
+                            }))
+                          }
+                          placeholder="https://..."
+                        />
+                      </label>
+                      <div className="trigger-upload">
+                        <span className="muted">Upload image</span>
+                        <label className="file-picker">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (file) {
+                                void handleEmojiUpload(activeEmojiTrigger.id, image.id, file);
+                              }
+                              event.target.value = "";
+                            }}
+                          />
+                          <span className="btn btn-ghost">
+                            {image.uploading ? "Uploading..." : "Upload"}
+                          </span>
+                        </label>
+                        <span className="muted">Max 5MB</span>
+                      </div>
+                      <div className="trigger-preview">
+                        {image.previewUrl ? (
+                          <img src={image.previewUrl} alt="Preview" />
+                        ) : (
+                          <span className="muted">No preview</span>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        onClick={() => removeEmojiImage(activeEmojiTrigger.id, image.id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="section-actions">
+                  <Button variant="ghost" onClick={() => addEmojiImage(activeEmojiTrigger.id)}>
+                    Add image
+                  </Button>
+                  <span className="muted">
+                    Uploads: {countEmojiUploads(emojiRows)}/{maxEmojiUploads} · Links are unlimited.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {activeRoleReactionMessage ? (
+          <div
+            className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={closeRoleReactionModal}
+          >
+            <div className="modal-panel modal-panel--wide" onClick={(event) => event.stopPropagation()}>
+              <div className="modal-header">
+                <div>
+                  <p className="eyebrow">Role reaction</p>
+                  <h2>
+                    {channelNameById.get(activeRoleReactionMessage.channelId) ??
+                      "Reaction message"}
+                  </h2>
+                  <p className="muted">
+                    Configure the message and the emoji → role pairs.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      removeRoleReactionMessage(activeRoleReactionMessage.key);
+                      closeRoleReactionModal();
+                    }}
+                  >
+                    Delete
+                  </Button>
+                  <Button variant="ghost" onClick={closeRoleReactionModal}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+              <div className="modal-body">
+                <div className="form-grid">
+                  <div className="form-grid split">
+                    <label>
+                      Channel
+                      <SearchableSelect
+                        value={activeRoleReactionMessage.channelId}
+                        onChange={(value) =>
+                          updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                            ...prev,
+                            channelId: value,
+                          }))
+                        }
+                        options={channels.map((channel) => ({
+                          value: channel.id,
+                          label: channel.name,
+                        }))}
+                        placeholder="Search channels..."
+                      />
+                    </label>
+                    <label>
+                      Message type
+                      <select
+                        value={activeRoleReactionMessage.type}
+                        onChange={(event) =>
+                          updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                            ...prev,
+                            type: event.target.value === "embed" ? "embed" : "text",
+                          }))
+                        }
+                      >
+                        <option value="text">Text</option>
+                        <option value="embed">Embed</option>
+                      </select>
+                    </label>
+                  </div>
+                  {activeRoleReactionMessage.type === "text" ? (
+                    <label>
+                      Message text
+                      <textarea
+                        rows={3}
+                        value={activeRoleReactionMessage.message}
+                        onChange={(event) =>
+                          updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                            ...prev,
+                            message: event.target.value,
+                          }))
+                        }
+                      />
+                      <span className="muted">Emoji are supported in the message.</span>
+                    </label>
+                  ) : (
+                    <>
+                      <label>
+                        Embed title
+                        <input
+                          value={activeRoleReactionMessage.embed?.title ?? ""}
+                          onChange={(event) =>
+                            updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                              ...prev,
+                              embed: {
+                                ...prev.embed,
+                                title: event.target.value,
+                                description: prev.embed?.description ?? prev.message,
+                                color: prev.embed?.color ?? "#2f7cff",
+                              },
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Embed description
+                        <textarea
+                          rows={3}
+                          value={activeRoleReactionMessage.embed?.description ?? activeRoleReactionMessage.message}
+                          onChange={(event) =>
+                            updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                              ...prev,
+                              message: event.target.value,
+                              embed: {
+                                ...prev.embed,
+                                title: prev.embed?.title ?? "Choose your role",
+                                description: event.target.value,
+                                color: prev.embed?.color ?? "#2f7cff",
+                              },
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="color-input">
+                        Accent color
+                        <input
+                          type="color"
+                          value={activeRoleReactionMessage.embed?.color ?? "#2f7cff"}
+                          onChange={(event) =>
+                            updateRoleReactionMessage(activeRoleReactionMessage.key, (prev) => ({
+                              ...prev,
+                              embed: {
+                                ...prev.embed,
+                                title: prev.embed?.title ?? "Choose your role",
+                                description: prev.embed?.description ?? prev.message,
+                                color: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                        <span className="color-value">
+                          {activeRoleReactionMessage.embed?.color ?? "#2f7cff"}
+                        </span>
+                      </label>
+                    </>
+                  )}
+                </div>
+
+                <div className="reaction-list">
+                  {activeRoleReactionMessage.pairs.length === 0 ? (
+                    <p className="muted">Add at least one emoji/role pair.</p>
+                  ) : (
+                    activeRoleReactionMessage.pairs.map((pair, pairIndex) => {
+                      const emojiOption = roleEmojiMap.get(pair.emoji);
+                      const pickerId = `${activeRoleReactionMessage.key}-${pairIndex}`;
+                      const pickerOpen = activeRoleEmojiPickerId === pickerId;
+                      const pickerLabel =
+                        emojiOption?.name ?? (pair.emoji ? "Custom emoji" : "Select emoji");
+                      return (
+                        <div key={pickerId} className="reaction-row">
+                          <div className="emoji-select">
+                            <button
+                              type="button"
+                              className="emoji-select-trigger"
+                              onClick={() => {
+                                setActiveEmojiPickerId(null);
+                                setActiveRoleEmojiPickerId(pickerOpen ? null : pickerId);
+                                setRoleEmojiSearch("");
+                              }}
+                            >
+                              {emojiOption?.url ? (
+                                <img src={emojiOption.url} alt={emojiOption.name} />
+                              ) : pair.emoji ? (
+                                <span className="emoji-glyph">{pair.emoji}</span>
+                              ) : (
+                                <span className="emoji-select-placeholder">🙂</span>
+                              )}
+                              <span>{pickerLabel}</span>
+                            </button>
+                            {pickerOpen ? (
+                              <div className="emoji-select-menu emoji-select-menu--wide">
+                                <input
+                                  className="emoji-search"
+                                  placeholder="Search emoji..."
+                                  value={roleEmojiSearch}
+                                  onChange={(event) => setRoleEmojiSearch(event.target.value)}
+                                />
+                                <div className="emoji-group">
+                                  <span className="emoji-group-label">Server emojis</span>
+                                  <div className="emoji-grid">
+                                    {filteredRoleCustomEmojis.length === 0 ? (
+                                      <span className="muted">No matches.</span>
+                                    ) : (
+                                      filteredRoleCustomEmojis.map((option) => (
+                                        <button
+                                          key={option.id}
+                                          type="button"
+                                          className="emoji-option"
+                                          onClick={() => {
+                                            updateRoleReactionPair(
+                                              activeRoleReactionMessage.key,
+                                              pairIndex,
+                                              (prev) => ({ ...prev, emoji: option.id })
+                                            );
+                                            setActiveRoleEmojiPickerId(null);
+                                            setRoleEmojiSearch("");
+                                          }}
+                                        >
+                                          {option.url ? (
+                                            <img src={option.url} alt={option.name} />
+                                          ) : (
+                                            <span className="emoji-glyph">{option.id}</span>
+                                          )}
+                                          <span>{option.name}</span>
+                                        </button>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="emoji-group">
+                                  <span className="emoji-group-label">Default emojis</span>
+                                  <div className="emoji-grid">
+                                    {filteredRoleDefaultEmojis.map((option) => (
+                                      <button
+                                        key={option.id}
+                                        type="button"
+                                        className="emoji-option"
+                                        onClick={() => {
+                                          updateRoleReactionPair(
+                                            activeRoleReactionMessage.key,
+                                            pairIndex,
+                                            (prev) => ({ ...prev, emoji: option.id })
+                                          );
+                                          setActiveRoleEmojiPickerId(null);
+                                          setRoleEmojiSearch("");
+                                        }}
+                                      >
+                                        <span className="emoji-glyph">{option.id}</span>
+                                        <span>{option.name}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                          <label>
+                            Role
+                            <SearchableSelect
+                              value={pair.roleId}
+                              onChange={(value) =>
+                                updateRoleReactionPair(
+                                  activeRoleReactionMessage.key,
+                                  pairIndex,
+                                  (prev) => ({
+                                    ...prev,
+                                    roleId: value,
+                                  })
+                                )
+                              }
+                              options={roles.map((role) => ({
+                                value: role.id,
+                                label: stripRolePrefix(role.name),
+                              }))}
+                              placeholder="Search roles..."
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() =>
+                              removeRoleReactionPair(activeRoleReactionMessage.key, pairIndex)
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="section-actions">
+                  <Button
+                    variant="ghost"
+                    onClick={() => addRoleReactionPair(activeRoleReactionMessage.key)}
+                  >
+                    Add reaction
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {activePresenceLog ? (
           <div
             className="presence-modal-overlay"
@@ -4958,7 +5516,7 @@ export const Dashboard = () => {
             </div>
             <div className="save-bar-actions">
               <Button variant="ghost" onClick={handleUnsavedDiscard} disabled={discardBarDisabled}>
-                Discard
+                Cancel
               </Button>
               <Button onClick={handleUnsavedSave} disabled={saveBarDisabled}>
                 {saveBarLabel}

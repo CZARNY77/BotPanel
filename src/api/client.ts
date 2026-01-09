@@ -1431,6 +1431,25 @@ export async function getVoicePresenceLogs(
   return normalizeVoicePresenceLogs(response);
 }
 
+export async function deleteVoicePresenceLog(
+  id: string,
+  logId: string
+): Promise<boolean> {
+  if (USE_MOCKS) {
+    await sleep(150);
+    mockVoicePresenceLogs = {
+      ...mockVoicePresenceLogs,
+      [id]: (mockVoicePresenceLogs[id] ?? []).filter((log) => log.id !== logId),
+    };
+    return true;
+  }
+
+  await request<unknown>(`/api/servers/${id}/voice-presence/logs/${logId}`, {
+    method: "DELETE",
+  });
+  return true;
+}
+
 export async function getRoleReactions(id: string): Promise<RoleReactionSettings> {
   if (USE_MOCKS) {
     await sleep(200);

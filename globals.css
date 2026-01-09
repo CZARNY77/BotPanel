@@ -963,6 +963,7 @@ p {
 .searchable-select {
   display: grid;
   gap: 8px;
+  position: relative;
 }
 
 .searchable-input {
@@ -972,8 +973,47 @@ p {
   background: hsl(var(--input) / 0.95);
 }
 
-.searchable-select select {
-  width: 100%;
+.searchable-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--popover));
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  z-index: 20;
+  box-shadow: 0 18px 30px hsl(var(--background) / 0.35);
+}
+
+.searchable-option {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+
+.searchable-option:hover:not(:disabled),
+.searchable-option:focus-visible {
+  background: hsl(var(--muted) / 0.35);
+  border-color: hsl(var(--border));
+}
+
+.searchable-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.searchable-empty {
+  padding: 8px 10px;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.85rem;
 }
 
 input,
@@ -1525,7 +1565,7 @@ textarea {
 
 .trigger-image-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 140px auto;
+  grid-template-columns: minmax(220px, 1fr) 160px 120px auto;
   gap: 12px;
   align-items: end;
   padding: 12px;
@@ -1555,6 +1595,146 @@ textarea {
   background: hsl(var(--muted) / 0.18);
   display: grid;
   gap: 16px;
+}
+
+.trigger-summary-list {
+  display: grid;
+  gap: 12px;
+}
+
+.trigger-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.2);
+  cursor: pointer;
+}
+
+.trigger-summary-card:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.trigger-summary-card:hover {
+  border-color: hsl(var(--primary) / 0.35);
+  background: hsl(var(--muted) / 0.35);
+}
+
+.trigger-summary-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trigger-summary-emoji {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.35);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.trigger-summary-emoji img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trigger-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reaction-summary-list {
+  display: grid;
+  gap: 14px;
+}
+
+.reaction-summary-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.2);
+  cursor: pointer;
+}
+
+.reaction-summary-card:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.reaction-summary-card:hover {
+  border-color: hsl(var(--primary) / 0.35);
+  background: hsl(var(--muted) / 0.35);
+}
+
+.reaction-summary-main {
+  display: grid;
+  gap: 10px;
+}
+
+.reaction-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reaction-summary-emojis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reaction-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+}
+
+.emoji-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.35);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.emoji-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.role-chip-list {
+  display: grid;
+  gap: 8px;
+}
+
+.role-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.2);
 }
 
 .overview-stats-grid {
@@ -1623,6 +1803,46 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.presence-shell {
+  display: grid;
+  gap: 18px;
+  width: min(880px, 100%);
+  margin: 0 auto;
+}
+
+.presence-pane {
+  width: 100%;
+  display: grid;
+  gap: 16px;
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-tabs {
+  margin-top: 12px;
+  margin-bottom: 18px;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.3);
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.tab-button.active {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25);
+}
+
 .presence-channel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1649,6 +1869,9 @@ textarea {
 .presence-schedule-list {
   display: grid;
   gap: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .presence-schedule-card {
@@ -1736,6 +1959,58 @@ textarea {
   flex-wrap: wrap;
   justify-content: flex-end;
   text-align: right;
+}
+
+.presence-log-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: hsl(var(--foreground) / 0.45);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 40;
+}
+
+.modal-panel {
+  width: min(860px, 100%);
+  background: hsl(var(--card));
+  border-radius: 18px;
+  border: 1px solid hsl(var(--border));
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 50px hsl(var(--foreground) / 0.25);
+}
+
+.modal-panel--wide {
+  width: min(980px, 100%);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.modal-body {
+  display: grid;
+  gap: 16px;
 }
 
 .presence-modal-overlay {
@@ -1946,6 +2221,19 @@ textarea {
   font-size: 0.85rem;
 }
 
+.file-picker {
+  display: inline-flex;
+  align-items: center;
+}
+
+.file-picker input {
+  display: none;
+}
+
+.file-picker .btn {
+  cursor: pointer;
+}
+
 .trigger-preview {
   width: 120px;
   height: 80px;
@@ -1995,6 +2283,25 @@ textarea {
 
   .trigger-row .btn {
     justify-self: start;
+  }
+
+  .trigger-summary-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reaction-summary-card {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .save-bar {

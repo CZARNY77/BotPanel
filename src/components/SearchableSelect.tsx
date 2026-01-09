@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SelectOption = {
   value: string;
@@ -21,44 +21,90 @@ export const SearchableSelect = ({
   placeholder = "Search...",
   emptyLabel,
 }: SearchableSelectProps) => {
-  const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
-    if (!query.trim()) {
-      return options;
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value);
+  const [query, setQuery] = useState(selected?.label ?? "");
+
+  useEffect(() => {
+    if (!open) {
+      setQuery(selected?.label ?? "");
     }
+  }, [open, selected?.label]);
+
+  const filtered = useMemo(() => {
     const lowered = query.trim().toLowerCase();
-    const matches = options.filter(
+    const list = options.filter(
       (option) =>
+        !lowered ||
         option.label.toLowerCase().includes(lowered) ||
         option.value.toLowerCase().includes(lowered)
     );
-    if (!value) {
-      return matches;
-    }
-    const selected = options.find((option) => option.value === value);
-    if (selected && !matches.some((option) => option.value === selected.value)) {
-      return [selected, ...matches];
-    }
-    return matches;
-  }, [options, query, value]);
+    return emptyLabel ? [{ value: "", label: emptyLabel }, ...list] : list;
+  }, [options, query, emptyLabel]);
+
+  const handleBlur = () => {
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (wrapperRef.current && active && wrapperRef.current.contains(active)) {
+        return;
+      }
+      setOpen(false);
+      const typed = query.trim().toLowerCase();
+      if (!typed) {
+        return;
+      }
+      const exactMatch = options.find(
+        (option) => option.label.toLowerCase() === typed
+      );
+      if (exactMatch) {
+        onChange(exactMatch.value);
+      } else if (emptyLabel && emptyLabel.toLowerCase() === typed) {
+        onChange("");
+      }
+    });
+  };
 
   return (
-    <div className="searchable-select">
+    <div className="searchable-select" ref={wrapperRef} onBlur={handleBlur}>
       <input
         type="text"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
+        value={open ? query : selected?.label ?? ""}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => {
+          setOpen(true);
+          setQuery(selected?.label ?? "");
+        }}
         placeholder={placeholder}
         className="searchable-input"
       />
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        {emptyLabel ? <option value="">{emptyLabel}</option> : null}
-        {filtered.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      {open ? (
+        <div className="searchable-menu">
+          {filtered.length === 0 ? (
+            <div className="searchable-empty">No matches</div>
+          ) : (
+            filtered.map((option) => (
+              <button
+                key={`${option.value}-${option.label}`}
+                type="button"
+                className="searchable-option"
+                disabled={option.disabled}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onChange(option.value);
+                  setQuery(option.label);
+                  setOpen(false);
+                }}
+              >
+                {option.label}
+              </button>
+            ))
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };
