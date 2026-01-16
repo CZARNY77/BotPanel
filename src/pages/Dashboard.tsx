@@ -16,6 +16,8 @@ import {
   getAutorole,
   getWelcomeSettings,
   getWarthog,
+  getBanDmSettings,
+  getAntiSpamSettings,
   pingEvent,
   uploadImage,
   updateAutorole,
@@ -32,6 +34,8 @@ import {
   updateRoleReactions,
   updateWelcomeSettings,
   updateWarthog,
+  updateBanDmSettings,
+  updateAntiSpamSettings,
 } from "../api/client";
 import type {
   EmojiTrigger,
@@ -48,6 +52,8 @@ import type {
   Server,
   ServerMetadata,
   WarthogSettings,
+  BanDmSettings,
+  AntiSpamSettings,
   VoicePresenceLog,
   VoicePresenceSettings,
   WelcomeSettings,
@@ -107,6 +113,8 @@ type LoadedState = {
   emoji: boolean;
   roleReactions: boolean;
   warthog: boolean;
+  banDm: boolean;
+  antiSpam: boolean;
   autorole: boolean;
 };
 
@@ -310,6 +318,16 @@ const emptyWarthog: WarthogSettings = {
   bounceGif: "",
 };
 
+const emptyBanDm: BanDmSettings = {
+  enabled: true,
+  message:
+    "If you believe this was a mistake, please contact the **server moderators** and include any *relevant details*.",
+};
+
+const emptyAntiSpam: AntiSpamSettings = {
+  enabled: false,
+};
+
 const emptyVoicePresenceSettings: VoicePresenceSettings = {
   manualChannelIds: [],
   manualName: "",
@@ -363,6 +381,8 @@ const emptyLoadedState: LoadedState = {
   emoji: false,
   roleReactions: false,
   warthog: false,
+  banDm: false,
+  antiSpam: false,
   autorole: false,
 };
 
@@ -375,6 +395,8 @@ const emptyLoadingState: LoadingState = {
   emoji: false,
   roleReactions: false,
   warthog: false,
+  banDm: false,
+  antiSpam: false,
   autorole: false,
 };
 
@@ -807,6 +829,14 @@ export const Dashboard = () => {
   const [warthogSaving, setWarthogSaving] = useState(false);
   const [warthogRolePick, setWarthogRolePick] = useState("");
   const [warthogWhitelistInput, setWarthogWhitelistInput] = useState("");
+  const [banDmSettings, setBanDmSettings] = useState<BanDmSettings>(emptyBanDm);
+  const [banDmBaseline, setBanDmBaseline] = useState<BanDmSettings>(emptyBanDm);
+  const [banDmSaving, setBanDmSaving] = useState(false);
+  const [antiSpamSettings, setAntiSpamSettings] =
+    useState<AntiSpamSettings>(emptyAntiSpam);
+  const [antiSpamBaseline, setAntiSpamBaseline] =
+    useState<AntiSpamSettings>(emptyAntiSpam);
+  const [antiSpamSaving, setAntiSpamSaving] = useState(false);
 
   const [autoroleSettings, setAutoroleSettings] = useState<AutoRoleSettings>(emptyAutorole);
   const [autoroleSaving, setAutoroleSaving] = useState(false);
@@ -929,6 +959,10 @@ export const Dashboard = () => {
     setWarthogBaseline(emptyWarthog);
     setWarthogRolePick("");
     setWarthogWhitelistInput("");
+    setBanDmSettings(emptyBanDm);
+    setBanDmBaseline(emptyBanDm);
+    setAntiSpamSettings(emptyAntiSpam);
+    setAntiSpamBaseline(emptyAntiSpam);
     setAutoroleSettings(emptyAutorole);
     setAutoroleBaseline(emptyAutorole);
     setActiveEmojiPickerId(null);
@@ -1383,6 +1417,58 @@ export const Dashboard = () => {
     }
   };
 
+  const loadBanDm = async () => {
+    const serverId = activeServerId;
+    if (!serverId || loaded.banDm || sectionLoading.banDm) {
+      return;
+    }
+    updateSectionLoading("banDm", true);
+    try {
+      const settings = await getBanDmSettings(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
+      setBanDmSettings(settings);
+      setBanDmBaseline(settings);
+      updateLoaded("banDm", true);
+    } catch (err) {
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load ban DM settings.");
+        updateLoaded("banDm", true);
+      }
+    } finally {
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("banDm", false);
+      }
+    }
+  };
+
+  const loadAntiSpam = async () => {
+    const serverId = activeServerId;
+    if (!serverId || loaded.antiSpam || sectionLoading.antiSpam) {
+      return;
+    }
+    updateSectionLoading("antiSpam", true);
+    try {
+      const settings = await getAntiSpamSettings(serverId);
+      if (!isActiveServer(serverId)) {
+        return;
+      }
+      setAntiSpamSettings(settings);
+      setAntiSpamBaseline(settings);
+      updateLoaded("antiSpam", true);
+    } catch (err) {
+      if (isActiveServer(serverId)) {
+        setError(err instanceof Error ? err.message : "Failed to load anti-spam settings.");
+        updateLoaded("antiSpam", true);
+      }
+    } finally {
+      if (isActiveServer(serverId)) {
+        updateSectionLoading("antiSpam", false);
+      }
+    }
+  };
+
   const loadAutorole = async () => {
     const serverId = activeServerId;
     if (!serverId || loaded.autorole || sectionLoading.autorole) {
@@ -1514,6 +1600,8 @@ export const Dashboard = () => {
 
     if (activeSection === "other") {
       void loadWarthog();
+      void loadBanDm();
+      void loadAntiSpam();
     }
 
     if (activeSection === "autorole") {
@@ -2361,6 +2449,14 @@ export const Dashboard = () => {
     setWarthogSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
   };
 
+  const handleBanDmToggle = () => {
+    setBanDmSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
+  };
+
+  const handleAntiSpamToggle = () => {
+    setAntiSpamSettings((prev) => ({ ...prev, enabled: !prev.enabled }));
+  };
+
   const handleWarthogRoleSelect = (roleId: string) => {
     if (!roleId) {
       setWarthogRolePick("");
@@ -2398,6 +2494,44 @@ export const Dashboard = () => {
       setError(err instanceof Error ? err.message : "Failed to update Warthog mode.");
     } finally {
       setWarthogSaving(false);
+    }
+  };
+
+  const handleBanDmSave = async () => {
+    if (!activeServerId) {
+      return;
+    }
+    setBanDmSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const saved = await updateBanDmSettings(activeServerId, banDmSettings);
+      setBanDmSettings(saved);
+      setBanDmBaseline(saved);
+      setSuccess("Ban DM settings saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update ban DM settings.");
+    } finally {
+      setBanDmSaving(false);
+    }
+  };
+
+  const handleAntiSpamSave = async () => {
+    if (!activeServerId) {
+      return;
+    }
+    setAntiSpamSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const saved = await updateAntiSpamSettings(activeServerId, antiSpamSettings);
+      setAntiSpamSettings(saved);
+      setAntiSpamBaseline(saved);
+      setSuccess("Anti-spam settings saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update anti-spam settings.");
+    } finally {
+      setAntiSpamSaving(false);
     }
   };
 
@@ -2683,6 +2817,8 @@ export const Dashboard = () => {
     sectionLoading.metadata ||
     (emojiOptionsLoading && emojiOptions.length === 0);
   const warthogLoading = !loaded.warthog || sectionLoading.warthog;
+  const banDmLoading = !loaded.banDm || sectionLoading.banDm;
+  const antiSpamLoading = !loaded.antiSpam || sectionLoading.antiSpam;
   const autoroleLoading =
     !loaded.autorole || sectionLoading.autorole || sectionLoading.metadata;
 
@@ -2715,6 +2851,9 @@ export const Dashboard = () => {
     loaded.roleReactions && !isEqual(roleReactionComparable, roleReactionsBaseline);
   const autoroleDirty = loaded.autorole && !isEqual(autoroleSettings, autoroleBaseline);
   const warthogDirty = loaded.warthog && !isEqual(warthogSettings, warthogBaseline);
+  const banDmDirty = loaded.banDm && !isEqual(banDmSettings, banDmBaseline);
+  const antiSpamDirty = loaded.antiSpam && !isEqual(antiSpamSettings, antiSpamBaseline);
+  const otherLoading = warthogLoading || banDmLoading || antiSpamLoading;
 
   const hasUnsavedChanges = (() => {
     if (activeSection === "welcome") {
@@ -2733,7 +2872,7 @@ export const Dashboard = () => {
       return autoroleDirty;
     }
     if (activeSection === "other") {
-      return warthogDirty;
+      return warthogDirty || banDmDirty || antiSpamDirty;
     }
     return false;
   })();
@@ -2751,7 +2890,7 @@ export const Dashboard = () => {
     (activeSection === "presence" && voicePresenceSaving) ||
     (activeSection === "role-reactions" && roleReactionsSaving) ||
     (activeSection === "autorole" && autoroleSaving) ||
-    (activeSection === "other" && warthogSaving);
+    (activeSection === "other" && (warthogSaving || banDmSaving || antiSpamSaving));
   const discardBarDisabled = saveBarDisabled;
 
   const handleUnsavedSave = async () => {
@@ -2785,7 +2924,15 @@ export const Dashboard = () => {
       return;
     }
     if (activeSection === "other") {
-      await handleWarthogSave();
+      if (warthogDirty) {
+        await handleWarthogSave();
+      }
+      if (banDmDirty) {
+        await handleBanDmSave();
+      }
+      if (antiSpamDirty) {
+        await handleAntiSpamSave();
+      }
     }
   };
 
@@ -2840,6 +2987,8 @@ export const Dashboard = () => {
       setWarthogSettings(warthogBaseline);
       setWarthogRolePick("");
       setWarthogWhitelistInput("");
+      setBanDmSettings(banDmBaseline);
+      setAntiSpamSettings(antiSpamBaseline);
       return;
     }
   };
@@ -5468,8 +5617,8 @@ export const Dashboard = () => {
         ) : null}
 
         {activeSection === "other" ? (
-          warthogLoading ? (
-            <LoadingScreen label="Loading Warthog settings..." />
+          otherLoading ? (
+            <LoadingScreen label="Loading other settings..." />
           ) : (
             <section className="content-section">
               <div className="section-header">
@@ -5478,6 +5627,33 @@ export const Dashboard = () => {
                   <h1>Quick toggles</h1>
                   <p className="muted">Small switches that change the bot behavior instantly.</p>
                 </div>
+              </div>
+              <div className="card card--narrow">
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={antiSpamSettings.enabled}
+                      onChange={handleAntiSpamToggle}
+                      aria-label="Enable anti-spam protection"
+                    />
+                  </label>
+                  <span className="switch-label">Enable anti-spam protection</span>
+                </div>
+                {antiSpamSettings.enabled ? (
+                  <p className="muted">
+                    New members (joined within 5 minutes) are banned. Existing members are
+                    timed out for 24 hours. Link spam messages are removed.
+                    <br />
+                    Triggers (new): &#8805;3 links/5s, &#8805;5 links/10s, &#8805;3
+                    channels/5s, or same message 3x/10s.
+                    <br />
+                    Triggers (existing): &#8805;4 links/8s, &#8805;6 links/15s,
+                    &#8805;3 channels/8s, or same message 3x/15s.
+                  </p>
+                ) : (
+                  <p className="muted">Anti-spam protection is disabled.</p>
+                )}
               </div>
               <div className="card card--narrow">
                 <div className="switch-row">
@@ -5612,6 +5788,43 @@ export const Dashboard = () => {
                   </div>
                 ) : (
                   <p className="muted">Warthog is disabled on this server.</p>
+                )}
+              </div>
+              <div className="card card--narrow">
+                <div className="switch-row">
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={banDmSettings.enabled}
+                      onChange={handleBanDmToggle}
+                      aria-label="Enable ban direct messages"
+                    />
+                  </label>
+                  <span className="switch-label">Send a DM on ban</span>
+                </div>
+                {banDmSettings.enabled ? (
+                  <div className="form-grid">
+                    <label>
+                      Custom message
+                      <textarea
+                        rows={4}
+                        value={banDmSettings.message}
+                        onChange={(event) =>
+                          setBanDmSettings((prev) => ({
+                            ...prev,
+                            message: event.target.value,
+                          }))
+                        }
+                        placeholder="Add a short follow-up message for banned users."
+                      />
+                    </label>
+                    <p className="muted">
+                      The server name and ban reason are sent above this message. Discord
+                      markdown is supported.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="muted">Ban DMs are disabled on this server.</p>
                 )}
               </div>
             </section>

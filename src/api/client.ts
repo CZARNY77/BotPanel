@@ -14,6 +14,8 @@ import type {
   Server,
   ServerMetadata,
   ServerSettings,
+  BanDmSettings,
+  AntiSpamSettings,
   WarthogSettings,
   User,
   WelcomeSettings,
@@ -104,6 +106,16 @@ const defaultWarthogSettings: WarthogSettings = {
   whitelist: [],
   bounceMessage: "Warthog bounced off. This user is protected.",
   bounceGif: "",
+};
+
+const defaultBanDmSettings: BanDmSettings = {
+  enabled: true,
+  message:
+    "If you believe this was a mistake, please contact the **server moderators** and include any *relevant details*.",
+};
+
+const defaultAntiSpamSettings: AntiSpamSettings = {
+  enabled: false,
 };
 
 const defaultMetadata: ServerMetadata = {
@@ -305,6 +317,20 @@ let mockEmojis: Record<string, EmojiOption[]> = {
 let mockWarthog: Record<string, WarthogSettings> = {
   "9001": {
     ...defaultWarthogSettings,
+    enabled: true,
+  },
+};
+
+let mockBanDm: Record<string, BanDmSettings> = {
+  "9001": {
+    ...defaultBanDmSettings,
+    enabled: true,
+  },
+};
+
+let mockAntiSpam: Record<string, AntiSpamSettings> = {
+  "9001": {
+    ...defaultAntiSpamSettings,
     enabled: true,
   },
 };
@@ -624,6 +650,50 @@ const normalizeWarthogSettings = (payload: unknown): WarthogSettings => {
       defaultWarthogSettings.bounceMessage
     ),
     bounceGif: asString(raw.bounceGif ?? raw.bounce_gif, defaultWarthogSettings.bounceGif),
+  };
+};
+
+const normalizeBanDmSettings = (payload: unknown): BanDmSettings => {
+  const raw = isRecord(payload)
+    ? (payload.banDm as Record<string, unknown> | undefined) ??
+      (payload.ban_dm as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return { ...defaultBanDmSettings };
+  }
+
+  return {
+    enabled: asBoolean(
+      raw.enabled ?? raw.banDmEnabled ?? raw.ban_dm_enabled,
+      defaultBanDmSettings.enabled
+    ),
+    message: asString(
+      raw.message ?? raw.banDmMessage ?? raw.ban_dm_message,
+      defaultBanDmSettings.message
+    ),
+  };
+};
+
+const normalizeAntiSpamSettings = (payload: unknown): AntiSpamSettings => {
+  const raw = isRecord(payload)
+    ? (payload.antiSpam as Record<string, unknown> | undefined) ??
+      (payload.anti_spam as Record<string, unknown> | undefined) ??
+      (payload.data as Record<string, unknown> | undefined) ??
+      payload
+    : null;
+
+  if (!isRecord(raw)) {
+    return { ...defaultAntiSpamSettings };
+  }
+
+  return {
+    enabled: asBoolean(
+      raw.enabled ?? raw.antiSpamEnabled ?? raw.anti_spam_enabled,
+      defaultAntiSpamSettings.enabled
+    ),
   };
 };
 
@@ -1611,6 +1681,82 @@ export async function updateWarthog(
   });
 
   return normalizeWarthogSettings(response);
+}
+
+export async function getBanDmSettings(id: string): Promise<BanDmSettings> {
+  if (USE_MOCKS) {
+    await sleep(150);
+    return mockBanDm[id] ?? { ...defaultBanDmSettings };
+  }
+
+  try {
+    const response = await request<unknown>(`/api/servers/${id}/ban-dm`);
+    return normalizeBanDmSettings(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return { ...defaultBanDmSettings };
+    }
+    throw error;
+  }
+}
+
+export async function updateBanDmSettings(
+  id: string,
+  settings: BanDmSettings
+): Promise<BanDmSettings> {
+  if (USE_MOCKS) {
+    await sleep(250);
+    mockBanDm = {
+      ...mockBanDm,
+      [id]: settings,
+    };
+    return settings;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/ban-dm`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
+
+  return normalizeBanDmSettings(response);
+}
+
+export async function getAntiSpamSettings(id: string): Promise<AntiSpamSettings> {
+  if (USE_MOCKS) {
+    await sleep(150);
+    return mockAntiSpam[id] ?? { ...defaultAntiSpamSettings };
+  }
+
+  try {
+    const response = await request<unknown>(`/api/servers/${id}/anti-spam`);
+    return normalizeAntiSpamSettings(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return { ...defaultAntiSpamSettings };
+    }
+    throw error;
+  }
+}
+
+export async function updateAntiSpamSettings(
+  id: string,
+  settings: AntiSpamSettings
+): Promise<AntiSpamSettings> {
+  if (USE_MOCKS) {
+    await sleep(250);
+    mockAntiSpam = {
+      ...mockAntiSpam,
+      [id]: settings,
+    };
+    return settings;
+  }
+
+  const response = await request<unknown>(`/api/servers/${id}/anti-spam`, {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
+
+  return normalizeAntiSpamSettings(response);
 }
 
 export async function getAutorole(id: string): Promise<AutoRoleSettings> {

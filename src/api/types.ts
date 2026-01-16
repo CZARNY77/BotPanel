@@ -184,3 +184,12 @@ export type WarthogSettings = {
   bounceMessage: string;
   bounceGif: string;
 };
+
+export type BanDmSettings = {
+  enabled: boolean;
+  message: string;
+};
+
+export type AntiSpamSettings = {
+  enabled: boolean;
+};
