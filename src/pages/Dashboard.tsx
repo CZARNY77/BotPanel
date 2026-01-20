@@ -441,14 +441,13 @@ const createEmojiImageRow = (): TriggerImageRow => ({
 });
 
 const buildRoleReactionMessages = (
-  messages: RoleReactionSettings["messages"],
-  fallbackChannel = ""
+  messages: RoleReactionSettings["messages"]
 ): RoleReactionMessageDraft[] =>
   messages.map((message) => ({
     ...emptyRoleReactionMessage,
     ...message,
     key: message.key || createId(),
-    channelId: message.channelId || fallbackChannel,
+    channelId: message.channelId || "",
     type: message.type === "embed" ? "embed" : "text",
     embed: {
       ...roleReactionEmbedDefaults,
@@ -457,10 +456,9 @@ const buildRoleReactionMessages = (
     pairs: Array.isArray(message.pairs) ? message.pairs : [],
   }));
 
-const createRoleReactionMessage = (channelId = ""): RoleReactionMessageDraft => ({
+const createRoleReactionMessage = (): RoleReactionMessageDraft => ({
   ...emptyRoleReactionMessage,
   key: createId(),
-  channelId,
 });
 
 const isValidDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -1068,52 +1066,6 @@ export const Dashboard = () => {
   const roles = metadata.roles.length ? metadata.roles : fallbackRoles;
 
   useEffect(() => {
-    if (!welcomeSettings.channelId && channels.length) {
-      const nextChannel = channels[0].id;
-      setWelcomeSettings((prev) => ({
-        ...prev,
-        channelId: nextChannel,
-      }));
-      setWelcomeBaseline((prev) =>
-        prev.channelId ? prev : { ...prev, channelId: nextChannel }
-      );
-    }
-  }, [channels, welcomeSettings.channelId]);
-
-  useEffect(() => {
-    if (!farewellSettings.channelId && channels.length) {
-      const nextChannel = channels[0].id;
-      setFarewellSettings((prev) => ({
-        ...prev,
-        channelId: nextChannel,
-      }));
-      setFarewellBaseline((prev) =>
-        prev.channelId ? prev : { ...prev, channelId: nextChannel }
-      );
-    }
-  }, [channels, farewellSettings.channelId]);
-
-  useEffect(() => {
-    if (!channels.length) {
-      return;
-    }
-    setRoleReactionMessages((prev) => {
-      if (prev.length === 0) {
-        return prev;
-      }
-      let changed = false;
-      const next = prev.map((message) => {
-        if (message.channelId) {
-          return message;
-        }
-        changed = true;
-        return { ...message, channelId: channels[0].id };
-      });
-      return changed ? next : prev;
-    });
-  }, [channels]);
-
-  useEffect(() => {
     setEventForm((prev) => {
       const nextChannel = prev.channelId || channels[0]?.id || "";
       const nextRole = prev.roleId || "";
@@ -1142,19 +1094,6 @@ export const Dashboard = () => {
       };
     });
   }, [channels, roles, eventBaselineEditingId]);
-
-  useEffect(() => {
-    if (!autoroleSettings.roleId && roles.length) {
-      const nextRole = roles[0].id;
-      setAutoroleSettings((prev) => ({
-        ...prev,
-        roleId: nextRole,
-      }));
-      setAutoroleBaseline((prev) =>
-        prev.roleId ? prev : { ...prev, roleId: nextRole }
-      );
-    }
-  }, [roles, autoroleSettings.roleId]);
 
   const loadMetadata = async () => {
     const serverId = activeServerId;
@@ -1350,8 +1289,7 @@ export const Dashboard = () => {
       if (!isActiveServer(serverId)) {
         return;
       }
-      const fallbackChannel = channels[0]?.id ?? "";
-      const messages = buildRoleReactionMessages(data.messages, fallbackChannel);
+      const messages = buildRoleReactionMessages(data.messages);
       setRoleReactions({ ...data, messages });
       setRoleReactionMessages(messages);
       setRoleReactionsBaseline({ ...data, messages });
@@ -2218,8 +2156,7 @@ export const Dashboard = () => {
   };
 
   const addRoleReactionMessage = () => {
-    const fallbackChannel = channels[0]?.id ?? "";
-    const message = createRoleReactionMessage(fallbackChannel);
+    const message = createRoleReactionMessage();
     setRoleReactions((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
     setRoleReactionMessages((prev) => [...prev, message]);
     setActiveRoleReactionKey(message.key);
@@ -2429,8 +2366,7 @@ export const Dashboard = () => {
         })),
       };
       const saved = await updateRoleReactions(activeServerId, payload);
-      const fallbackChannel = channels[0]?.id ?? "";
-      const messages = buildRoleReactionMessages(saved.messages, fallbackChannel);
+      const messages = buildRoleReactionMessages(saved.messages);
       setRoleReactions({ ...saved, messages });
       setRoleReactionMessages(messages);
       setRoleReactionsBaseline({ ...saved, messages });
@@ -2970,8 +2906,7 @@ export const Dashboard = () => {
       return;
     }
     if (activeSection === "role-reactions") {
-      const fallbackChannel = channels[0]?.id ?? "";
-      const messages = buildRoleReactionMessages(roleReactionsBaseline.messages, fallbackChannel);
+      const messages = buildRoleReactionMessages(roleReactionsBaseline.messages);
       setRoleReactions({ ...roleReactionsBaseline, messages });
       setRoleReactionMessages(messages);
       setActiveRoleReactionKey(null);
