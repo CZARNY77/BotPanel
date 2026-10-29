@@ -49,6 +49,7 @@ const paths = {
   sidebar: "M4 4h16v16H4zM9 4v16",
   arrowLeft: "M19 12H5M11 6l-6 6 6 6",
   copy: "M8 8h12v12H8zM4 16V4h12",
+  eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   filter: "M4 5h16l-6 8v6l-4-2v-4z",
   yes: "M5 12l5 5 9-10",
   no: "M6 6l12 12M18 6L6 18",

@@ -401,3 +401,76 @@ kbd {
   font-size: var(--bd-fs-xs);
   color: var(--bd-text-muted);
 }
+
+/* ---------- day select + emoji slot */
+.day-select {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bd-bg);
+  border: 1px solid var(--bd-input);
+  border-radius: var(--bd-radius-control);
+}
+
+.day-select__day {
+  min-width: 40px;
+  height: 30px;
+  padding: 0 6px;
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  color: var(--bd-text-muted);
+  font-weight: 600;
+  font-size: var(--bd-fs-sm);
+  cursor: pointer;
+}
+
+.day-select__day:hover {
+  color: var(--bd-text);
+  background: var(--bd-hover);
+}
+
+.day-select__day.active {
+  background: var(--bd-primary);
+  color: var(--bd-primary-ink);
+}
+
+.emoji-slot {
+  width: var(--bd-control-h);
+  padding: 0;
+}
+
+.emoji-slot--invalid {
+  border-color: var(--bd-err);
+  background: var(--bd-err-soft);
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bd-bg);
+  border: 1px solid var(--bd-border-strong);
+  border-radius: var(--bd-radius-control);
+}
+
+.segmented button {
+  height: 30px;
+  padding: 0 var(--bd-space-3);
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  color: var(--bd-text-muted);
+  font-weight: 600;
+  font-size: var(--bd-fs-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--bd-hover);
+  color: var(--bd-text);
+}

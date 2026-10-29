@@ -250,3 +250,9 @@
   width: 20px;
   height: 20px;
 }
+
+.dc__image {
+  margin-top: 6px;
+  max-width: 320px;
+  border-radius: 4px;
+}
