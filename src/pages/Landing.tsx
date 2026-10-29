@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { getInviteUrl } from "../api/client";
+import { getInviteUrl } from "../api/endpoints/servers";
 import { Button } from "../components/Button";
 import logo from "../assets/logo.png";
 

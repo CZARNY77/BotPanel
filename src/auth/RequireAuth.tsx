@@ -8,7 +8,7 @@ export const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children 
   const location = useLocation();
 
   if (loading) {
-    return <LoadingScreen label="Sprawdzamy sesje..." />;
+    return <LoadingScreen label="Checking session…" />;
   }
 
   if (!user) {

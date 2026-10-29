@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
-import { sendClientLog } from "./api/client";
+import { sendClientLog } from "./api/endpoints/auth";
 import "../globals.css";
 
 const reportClientError = (message: string, context?: Record<string, unknown>) => {

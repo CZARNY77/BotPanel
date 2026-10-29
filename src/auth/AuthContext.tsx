@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "../api/types";
-import { authUrl, getMe, logout } from "../api/client";
+import { authUrl, getMe, logout } from "../api/endpoints/auth";
+import { USE_MOCKS } from "../api/http";
 
 type AuthContextValue = {
   user: User | null;
@@ -37,6 +38,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refresh]);
 
   const login = useCallback(() => {
+    if (USE_MOCKS) {
+      // Mock mode has no OAuth; clear the mock "logged out" flag and enter.
+      void import("../api/mocks/router").then(({ mockLogin }) => {
+        mockLogin();
+        window.location.href = "/dashboard";
+      });
+      return;
+    }
     window.location.href = authUrl;
   }, []);
 

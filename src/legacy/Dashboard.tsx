@@ -36,7 +36,7 @@ import {
   updateWarthog,
   updateBanDmSettings,
   updateAntiSpamSettings,
-} from "../api/client";
+} from "./client";
 import type {
   EmojiTrigger,
   EmojiTriggerSettings,
@@ -57,7 +57,7 @@ import type {
   VoicePresenceLog,
   VoicePresenceSettings,
   WelcomeSettings,
-} from "../api/types";
+} from "./types";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { LoadingScreen } from "../components/LoadingScreen";

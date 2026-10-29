@@ -1,7 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./auth/RequireAuth";
 import { Layout } from "./components/Layout";
-import { Dashboard } from "./pages/Dashboard";
+import { Dashboard } from "./legacy/Dashboard";
 import { Landing } from "./pages/Landing";
 import { NotFound } from "./pages/NotFound";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
