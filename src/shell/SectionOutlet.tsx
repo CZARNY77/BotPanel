@@ -10,11 +10,12 @@ const NotMigrated = () => (
   </EmptyState>
 );
 
-const pages: Partial<Record<SectionKey, LazyExoticComponent<ComponentType>>> = {};
+const pages: Partial<Record<SectionKey, LazyExoticComponent<ComponentType>>> = {
+  autorole: lazy(() => import("../features/autorole/AutorolePage")),
+};
 
 export const SectionOutlet = ({ section }: { section: SectionKey }) => {
   const Page = pages[section];
   return <Suspense fallback={<PageSkeleton />}>{Page ? <Page /> : <NotMigrated />}</Suspense>;
 };
 
-export { lazy };

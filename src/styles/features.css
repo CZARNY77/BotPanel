@@ -256,3 +256,36 @@
   max-width: 320px;
   border-radius: 4px;
 }
+
+/* ---------- small "how it works" flow */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: var(--bd-space-3);
+  flex-wrap: wrap;
+  padding: var(--bd-space-5) 0;
+}
+
+.flow__step {
+  display: flex;
+  align-items: center;
+  gap: var(--bd-space-2);
+  padding: var(--bd-space-2) var(--bd-space-3);
+  border: 1px solid var(--bd-border);
+  border-radius: var(--bd-radius-card);
+  color: var(--bd-text-2);
+  font-weight: 600;
+}
+
+.flow__step--on {
+  border-color: var(--bd-accent);
+  color: var(--bd-text);
+}
+
+.flow__step--on .icon {
+  color: var(--bd-accent);
+}
+
+.flow__arrow {
+  color: var(--bd-text-muted);
+}
