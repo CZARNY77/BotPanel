@@ -1,0 +1,156 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bd-bg);
+  color: var(--bd-text);
+  font-family: var(--bd-font);
+  font-size: var(--bd-fs-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: var(--bd-font-display);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: var(--cb-fs-h1);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: var(--cb-fs-h2);
+  font-weight: 650;
+}
+
+h3 {
+  font-size: var(--bd-fs-md);
+  font-weight: 650;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--bd-link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+:focus-visible {
+  outline: 2px solid var(--bd-primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--bd-primary-soft);
+}
+
+.muted {
+  color: var(--bd-text-muted);
+}
+
+.small {
+  font-size: var(--bd-fs-sm);
+}
+
+.xs {
+  font-size: var(--bd-fs-xs);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--cb-mono);
+  font-size: var(--bd-fs-sm);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.prose {
+  max-width: 70ch;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--bd-space-2);
+  flex-wrap: wrap;
+}
+
+.row--between {
+  justify-content: space-between;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bd-space-3);
+}
+
+.stack--lg {
+  gap: var(--bd-space-5);
+}
+
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

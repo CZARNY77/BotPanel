@@ -1,0 +1,252 @@
+/* Shell extras (palette, bot status) and feature-specific pieces. */
+
+/* ---------- command palette */
+.palette {
+  width: min(600px, 100%);
+  background: var(--bd-surface);
+  border: 1px solid var(--bd-border-strong);
+  border-radius: var(--bd-radius-panel);
+  box-shadow: var(--bd-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+}
+
+.palette__input {
+  display: flex;
+  align-items: center;
+  gap: var(--bd-space-3);
+  padding: 0 var(--bd-space-4);
+  border-bottom: 1px solid var(--bd-border);
+  color: var(--bd-text-muted);
+}
+
+.palette__input input {
+  flex: 1;
+  height: 52px;
+  background: none;
+  border: 0;
+  outline: none;
+  font-size: var(--bd-fs-lg);
+  color: var(--bd-text);
+}
+
+.palette__list {
+  overflow: auto;
+  padding: var(--bd-space-1) var(--bd-space-2) var(--bd-space-2);
+}
+
+.palette__group {
+  padding: var(--bd-space-3) var(--bd-space-2) var(--bd-space-1);
+  font-size: var(--bd-fs-xs);
+  color: var(--bd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.palette__option {
+  min-height: 38px;
+}
+
+.palette__option.active {
+  background: var(--bd-primary-soft);
+}
+
+.palette__option.active .icon {
+  color: var(--bd-primary);
+}
+
+.palette__foot {
+  display: flex;
+  gap: var(--bd-space-4);
+  padding: var(--bd-space-2) var(--bd-space-4);
+  border-top: 1px solid var(--bd-border);
+}
+
+/* ---------- bot status */
+.bot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--bd-surface-alt);
+  font-size: var(--bd-fs-sm);
+  font-weight: 600;
+  color: var(--bd-text-2);
+}
+
+@media (max-width: 640px) {
+  .bot-status__text,
+  .topbar__search {
+    display: none;
+  }
+
+  .bot-status {
+    padding: 0 8px;
+  }
+}
+
+/* ---------- Discord message preview (mimics Discord, uses --cb-discord-*) */
+.dc {
+  background: var(--cb-discord-bg);
+  color: var(--cb-discord-text);
+  border-radius: var(--bd-radius-panel);
+  padding: var(--bd-space-4);
+  font-size: 15px;
+  line-height: 1.375;
+}
+
+.dc__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--bd-space-2);
+  font-size: var(--bd-fs-xs);
+  color: var(--bd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dc__msg {
+  display: flex;
+  gap: 14px;
+}
+
+.dc__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
+  background: var(--cb-discord-embed);
+}
+
+.dc__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.dc__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dc__name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.dc__tag {
+  background: var(--cb-discord-blurple);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.dc__time {
+  font-size: 12px;
+  color: var(--cb-discord-muted);
+}
+
+.dc__text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dc__mention {
+  background: var(--cb-discord-mention);
+  color: #c9cdfb;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.dc__embed {
+  margin-top: 6px;
+  max-width: 440px;
+  display: flex;
+  gap: var(--bd-space-3);
+  background: var(--cb-discord-embed);
+  border-left: 4px solid var(--embed, var(--cb-discord-blurple));
+  border-radius: 4px;
+  padding: 10px 14px 12px 12px;
+}
+
+.dc__embed-title {
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.dc__embed-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: none;
+  background: var(--cb-discord-bg);
+}
+
+.dc__reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.dc__reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--cb-discord-embed);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.dc__reaction img {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- composer toolbar */
+.composer-tools {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 2px;
+}
+
+.emoji-grid .option {
+  justify-content: center;
+  font-size: 20px;
+  padding: 2px;
+  min-height: 36px;
+}
+
+.emoji-grid img {
+  width: 22px;
+  height: 22px;
+}
+
+.emoji-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 18px;
+}
+
+.emoji-token img {
+  width: 20px;
+  height: 20px;
+}

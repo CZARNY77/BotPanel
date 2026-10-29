@@ -1,0 +1,31 @@
+/* App-level tokens. Theme colours come only from --bd-* (skin-blcdev.css).
+   --cb-* are ConqBot layout sizes and domain data (Discord preview colours), not theme. */
+:root {
+  --cb-sidebar-w: 236px;
+  --cb-sidebar-w-collapsed: 60px;
+  --cb-topbar-h: 56px;
+  --cb-content-max: 1320px;
+  --cb-fs-h1: 28px;
+  --cb-fs-h2: 17px;
+  --cb-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+
+  /* Discord message preview: this mimics Discord itself, so it is data, not our theme. */
+  --cb-discord-bg: #313338;
+  --cb-discord-embed: #2b2d31;
+  --cb-discord-text: #dbdee1;
+  --cb-discord-muted: #949ba4;
+  --cb-discord-blurple: #5865f2;
+  --cb-discord-mention: rgb(88 101 242 / .3);
+
+  /* Section hues (category = colour + icon). Mixed from skin tokens. */
+  --cb-hue-overview: var(--bd-text-2);
+  --cb-hue-greetings: var(--bd-ok);
+  --cb-hue-events: var(--bd-primary);
+  --cb-hue-voice: var(--bd-warn);
+  --cb-hue-emoji: var(--bd-drobne);
+  --cb-hue-reactions: var(--bd-wazne);
+  --cb-hue-autorole: var(--bd-accent);
+  --cb-hue-moderation: var(--bd-err);
+  --cb-hue-settings: var(--bd-info);
+  --cb-hue-console: var(--bd-info);
+}

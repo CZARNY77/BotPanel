@@ -1,36 +1,19 @@
-import { useMemo, useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
 import { getInviteUrl } from "../api/endpoints/servers";
-import { Button } from "../components/Button";
-import logo from "../assets/logo.png";
+import { useAuth } from "../auth/AuthContext";
+import { Button } from "../components/ui/Button";
+import { Icon } from "../components/ui/Icon";
+import { sections } from "../shell/sections";
 
-const features = [
-  {
-    title: "Greetings & Farewells",
-    description: "Welcome or send-off messages with text or embeds.",
-  },
-  {
-    title: "Event creator",
-    description: "Discord-style RSVP events with reminders and pings.",
-  },
-  {
-    title: "Voice presence",
-    description: "Manual or scheduled attendance snapshots for voice channels.",
-  },
-  {
-    title: "Emoji triggers",
-    description: "Respond to emojis with a random image.",
-  },
-  {
-    title: "Role reactions",
-    description: "Self-assign roles from reaction messages.",
-  },
-  {
-    title: "Auto roles + tools",
-    description: "Assign roles on join and manage extra toggles.",
-  },
-];
+const blurbs: Partial<Record<string, string>> = {
+  greetings: "Welcome and farewell messages as text or embeds.",
+  events: "Events with Yes / No / Maybe signups, repeats and pings.",
+  "voice-snapshots": "Who is in voice, now or on a weekly schedule.",
+  "emoji-triggers": "Post a random image when someone sends an emoji.",
+  "role-reactions": "Members pick their own roles with reactions.",
+  moderation: "Anti-spam, ban and timeout DMs, Warthog protection.",
+};
 
 export const Landing = () => {
   const { user, login } = useAuth();
@@ -53,63 +36,57 @@ export const Landing = () => {
       setInviteLoading(false);
     }
   };
-  const heroCta = useMemo(() => {
-    if (user) {
-      return (
-        <Link to="/dashboard" className="btn btn-primary">
-          Open dashboard
-        </Link>
-      );
-    }
-
-    return (
-      <Button onClick={login}>
-        Login with Discord
-      </Button>
-    );
-  }, [user, login]);
 
   return (
-    <div className="landing landing--simple">
+    <div className="landing">
       <section className="landing-hero">
         <div className="landing-container">
-          <div className="landing-card">
-            <div className="hero-brand">
-              <img src={logo} alt="ConqBot logo" />
-              <span>ConqBot Panel</span>
-            </div>
-            <h1>One panel to run your Discord servers.</h1>
-            <p className="muted">
-              Configure welcomes, events, voice presence, and role tools from a clean dashboard.
-            </p>
-            <div className="hero-actions">
-              {heroCta}
-              <Button variant="outline" onClick={handleInvite} disabled={inviteLoading}>
-                {inviteLoading ? "Opening..." : "Add ConqBot"}
+          <h1>Run your Discord server from one panel.</h1>
+          <p className="muted">
+            Greetings, events with signups, voice snapshots, role tools and moderation for ConqBot.
+          </p>
+          <div className="hero-actions">
+            {user ? (
+              <Link to="/dashboard" className="btn btn-primary">
+                Open dashboard
+              </Link>
+            ) : (
+              <Button variant="primary" onClick={login}>
+                Login with Discord
               </Button>
-            </div>
-            {inviteError ? <p className="muted">{inviteError}</p> : null}
+            )}
+            <Button icon="plus" onClick={() => void handleInvite()} loading={inviteLoading}>
+              Add ConqBot
+            </Button>
           </div>
+          {inviteError ? <p className="muted">{inviteError}</p> : null}
         </div>
       </section>
 
-      <section id="features" className="landing-section">
+      <section className="landing-section">
         <div className="landing-container">
           <h2>What you can do</h2>
           <div className="feature-list">
-            {features.map((feature) => (
-              <article key={feature.title} className="feature-item">
-                <h3>{feature.title}</h3>
-                <p className="muted">{feature.description}</p>
-              </article>
-            ))}
+            {sections
+              .filter((section) => blurbs[section.key])
+              .map((section) => (
+                <article key={section.key} className="feature-item" style={{ "--hue": section.hue } as CSSProperties}>
+                  <span className="page-head__tile">
+                    <Icon name={section.icon} />
+                  </span>
+                  <div>
+                    <h3>{section.label}</h3>
+                    <p className="muted">{blurbs[section.key]}</p>
+                  </div>
+                </article>
+              ))}
           </div>
         </div>
       </section>
 
       <footer className="landing-footer">
         <div className="landing-container landing-footer-inner">
-          <span className="muted">ConqBot Panel</span>
+          <span>ConqBot Panel</span>
           <div className="footer-links">
             <Link to="/privacy-policy">Privacy Policy</Link>
             <Link to="/terms-of-service">Terms of Service</Link>
