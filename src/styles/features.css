@@ -289,3 +289,52 @@
 .flow__arrow {
   color: var(--bd-text-muted);
 }
+
+/* ---------- emoji triggers */
+.thumbs {
+  display: flex;
+  gap: 4px;
+}
+
+.thumbs img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--bd-radius-card);
+  background: var(--bd-surface-alt);
+}
+
+.image-row {
+  display: flex;
+  align-items: center;
+  gap: var(--bd-space-2);
+}
+
+.image-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.image-row__thumb {
+  width: 56px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--bd-radius-card);
+  background: var(--bd-surface-alt);
+  color: var(--bd-text-muted);
+  overflow: hidden;
+}
+
+.image-row__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 640px) {
+  .thumbs {
+    display: none;
+  }
+}

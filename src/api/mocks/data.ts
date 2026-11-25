@@ -157,7 +157,7 @@ export const emojiTriggers: Record<string, EmojiTriggerSettings> = {
     requireExact: false,
     triggers: [
       { emoji: "🔥", imageUrls: ["https://placehold.co/320x180/1f1f1f/f97316?text=fire"] },
-      { emoji: "<:shield:987654321>", imageUrls: ["https://placehold.co/320x180/1f1f1f/22c55e?text=shield", "https://placehold.co/320x180/1f1f1f/ffffff?text=wall"] },
+      { emoji: "⚔️", imageUrls: ["https://placehold.co/320x180/1f1f1f/22c55e?text=swords", "https://placehold.co/320x180/1f1f1f/ffffff?text=wall"] },
     ],
   },
 };
