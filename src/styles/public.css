@@ -205,3 +205,8 @@
     display: none;
   }
 }
+
+.policy-page .card {
+  padding-top: var(--bd-space-4);
+  border-top: 1px solid var(--bd-border);
+}
