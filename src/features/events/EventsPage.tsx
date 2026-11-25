@@ -31,7 +31,9 @@ export default function EventsPage() {
 
   const all = events.data ?? [];
   const list = all;
-  const serverTz = settings.data?.timezone ?? "Europe/Warsaw";
+  // K3: new events default to the server zone. Wait for it; if it cannot load, send no zone and the bot uses its default.
+  const serverTz = settings.data?.timezone ?? "";
+  const canCreate = Boolean(settings.data) || Boolean(settings.error);
 
   useEffect(() => {
     if (params.get("new") === "1") {
@@ -100,7 +102,7 @@ export default function EventsPage() {
         hue="var(--cb-hue-events)"
         title="Events"
         subtitle="Members answer Going, Maybe or Not going under the bot's message. Repeating events start the next one when they end."
-        actions={<Button variant="primary" icon="plus" onClick={() => setPanel({ kind: "new" })}>New event</Button>}
+        actions={<Button variant="primary" icon="plus" loading={!canCreate} onClick={() => setPanel({ kind: "new" })}>New event</Button>}
       />
       {events.error ? <ErrorState message={events.error} onRetry={() => void events.reload()} /> : null}
       {events.loading && !events.data ? (
@@ -121,13 +123,15 @@ export default function EventsPage() {
             }
           >
             {list.length === 0 ? (
-              <EmptyState icon="events" title={filter === "active" ? "No upcoming events" : "No events yet"} action={<Button icon="plus" onClick={() => setPanel({ kind: "new" })}>New event</Button>} />
+              <EmptyState icon="events" title={filter === "active" ? "No upcoming events" : "No events yet"} action={<Button icon="plus" disabled={!canCreate} onClick={() => setPanel({ kind: "new" })}>New event</Button>} />
             ) : (
               <EventList events={list} selectedId={shown && shown.kind !== "new" ? shown.id : null} onSelect={(id) => setPanel({ kind: "detail", id })} />
             )}
           </Group>
           <div className="sticky-col">
-            {shown?.kind === "new" ? (
+            {shown?.kind === "new" && !canCreate ? (
+              <PageSkeleton rows={3} />
+            ) : shown?.kind === "new" ? (
               <EventForm key="new" serverTimezone={serverTz} editing={false} saving={saving} onSubmit={(f) => void submit(f)} onCancel={() => setPanel(null)} />
             ) : shown?.kind === "edit" && current ? (
               <EventForm key={current.id} initial={formFromEvent(current)} serverTimezone={serverTz} editing saving={saving} onSubmit={(f) => void submit(f)} onCancel={() => setPanel({ kind: "detail", id: current.id })} />

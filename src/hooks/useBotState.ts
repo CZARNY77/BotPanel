@@ -16,8 +16,9 @@ export const useBotState = (): BotState => {
       try {
         const health = await getHealth();
         if (!alive) return;
-        if (health?.status === "not_ready") setState("offline");
-        else setState(health?.ready ? "online" : "starting");
+        // A gateway error (502/504 from Traefik) has no JSON body: that is "offline", not "starting".
+        if (!health || typeof health.ready !== "boolean" || health.status === "not_ready") setState("offline");
+        else setState(health.ready ? "online" : "starting");
       } catch {
         if (alive) setState("offline");
       }
