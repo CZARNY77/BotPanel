@@ -15,6 +15,7 @@ const pages: Partial<Record<SectionKey, LazyExoticComponent<ComponentType>>> = {
   "emoji-triggers": lazy(() => import("../features/emoji-triggers/EmojiTriggersPage")),
   "role-reactions": lazy(() => import("../features/role-reactions/RoleReactionsPage")),
   "voice-snapshots": lazy(() => import("../features/voice-snapshots/VoiceSnapshotsPage")),
+  events: lazy(() => import("../features/events/EventsPage")),
   autorole: lazy(() => import("../features/autorole/AutorolePage")),
 };
 
