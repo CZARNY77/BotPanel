@@ -370,6 +370,8 @@ kbd {
   gap: var(--bd-space-1);
   border-bottom: 1px solid var(--bd-border);
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
 .tab {

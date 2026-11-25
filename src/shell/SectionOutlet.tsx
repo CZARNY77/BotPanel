@@ -11,6 +11,7 @@ const NotMigrated = () => (
 );
 
 const pages: Partial<Record<SectionKey, LazyExoticComponent<ComponentType>>> = {
+  greetings: lazy(() => import("../features/greetings/GreetingsPage")),
   autorole: lazy(() => import("../features/autorole/AutorolePage")),
 };
 
