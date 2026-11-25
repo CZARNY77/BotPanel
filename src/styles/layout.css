@@ -62,10 +62,11 @@
 }
 
 .group__desc {
-  flex-basis: 100%;
+  flex: 0 0 100%;
+  order: 3;
+  margin-top: -6px;
   color: var(--bd-text-muted);
   font-size: var(--bd-fs-sm);
-  max-width: 70ch;
 }
 
 .group__actions {
