@@ -179,3 +179,13 @@
   40%, 80% { transform: translate(calc(-50% + 6px), 0); }
 }
 
+/* Unsaved bar centred over the content, not the whole window. */
+@media (min-width: 861px) {
+  .shell .unsaved {
+    left: calc(50% + var(--cb-sidebar-w) / 2);
+  }
+
+  .shell--collapsed .unsaved {
+    left: calc(50% + var(--cb-sidebar-w-collapsed) / 2);
+  }
+}
