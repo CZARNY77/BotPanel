@@ -556,3 +556,52 @@ fieldset.plain:disabled {
     padding-top: var(--bd-space-5);
   }
 }
+
+/* ---------- console */
+.split--admin {
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+}
+
+.log-row {
+  min-height: 40px;
+  align-items: flex-start;
+  font-size: var(--bd-fs-sm);
+}
+
+.log-row > span:first-child {
+  padding-top: 2px;
+}
+
+.log-row__time {
+  width: 112px;
+  flex: none;
+  font-size: var(--bd-fs-xs);
+  padding-top: 2px;
+}
+
+.log-row__msg {
+  word-break: break-word;
+}
+
+.log-context {
+  margin: 0 0 var(--bd-space-2) 40px;
+  padding: var(--bd-space-3);
+  background: var(--bd-surface-alt);
+  border-radius: var(--bd-radius-card);
+  font-family: var(--cb-mono);
+  font-size: var(--bd-fs-xs);
+  overflow: auto;
+  max-height: 240px;
+}
+
+@media (max-width: 1100px) {
+  .split--admin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .log-row__time {
+    width: 60px;
+  }
+}

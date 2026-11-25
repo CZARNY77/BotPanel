@@ -17,6 +17,7 @@ const pages: Partial<Record<SectionKey, LazyExoticComponent<ComponentType>>> = {
   "voice-snapshots": lazy(() => import("../features/voice-snapshots/VoiceSnapshotsPage")),
   events: lazy(() => import("../features/events/EventsPage")),
   moderation: lazy(() => import("../features/moderation/ModerationPage")),
+  console: lazy(() => import("../features/admin/AdminPage")),
   autorole: lazy(() => import("../features/autorole/AutorolePage")),
 };
 
