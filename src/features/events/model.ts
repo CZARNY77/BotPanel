@@ -1,4 +1,5 @@
 import type { EventInput, EventItem } from "../../api/types";
+export { dateParts } from "../../components/ui/DateTile";
 
 export type EventForm = {
   title: string;
@@ -69,13 +70,6 @@ export const toInput = (form: EventForm): EventInput | string => {
     durationMinutes: Math.round(hours * 60),
     ...(form.timezone ? { timezone: form.timezone } : {}),
   };
-};
-
-export const dateParts = (date: string) => {
-  const [day, month, year] = date.split(".").map(Number);
-  if (!day || !month || !year) return { day: "–", month: "" };
-  const d = new Date(year, month - 1, day);
-  return { day: String(day), month: d.toLocaleString("en-GB", { month: "short" }), weekday: d.toLocaleString("en-GB", { weekday: "short" }) };
 };
 
 export const repeatLabel = (days: number) =>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getInviteUrl } from "../api/endpoints/servers";
+import { openInvite } from "../api/endpoints/servers";
 import type { Server } from "../api/types";
 import { Icon } from "../components/ui/Icon";
 import { errorText, useToast } from "../components/ui/Toast";
@@ -17,12 +17,6 @@ export const ServerIcon = ({ server }: { server: Server }) => (
     {server.iconUrl ? <img src={server.iconUrl} alt="" /> : initials(server.name)}
   </span>
 );
-
-export const openInvite = async (serverId?: string) => {
-  const url = await getInviteUrl(serverId);
-  if (!url) throw new Error("Invite link unavailable. Try again in a moment.");
-  window.open(url, "_blank", "noopener,noreferrer");
-};
 
 export const ServerSwitcher = ({
   servers,

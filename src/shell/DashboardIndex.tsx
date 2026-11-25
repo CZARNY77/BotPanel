@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EmptyState, LoadingScreen } from "../components/ui/basics";
 import { lastServer, useServers } from "../hooks/useServers";
-import { openInvite } from "./ServerSwitcher";
+import { openInvite } from "../api/endpoints/servers";
 import { sectionPath } from "./sections";
 
 /** /dashboard: go to the last used server, else the first one with the bot. */

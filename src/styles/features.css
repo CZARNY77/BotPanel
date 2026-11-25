@@ -605,3 +605,34 @@ fieldset.plain:disabled {
     width: 60px;
   }
 }
+
+/* ---------- overview + settings */
+.overview-stats {
+  padding-bottom: var(--bd-space-5);
+  border-bottom: 1px solid var(--bd-border);
+}
+
+.module-row {
+  color: inherit;
+}
+
+.module-row:hover {
+  text-decoration: none;
+}
+
+.module-row__tile {
+  width: 32px;
+  height: 32px;
+}
+
+.split > .stack > .group:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.clock {
+  display: flex;
+  gap: var(--bd-space-4);
+  align-items: center;
+  color: var(--bd-text-2);
+}

@@ -45,6 +45,13 @@ export async function getInviteUrl(serverId?: string): Promise<string> {
   return data.invite_url ?? "";
 }
 
+/** Opens the bot invite in a new tab. */
+export const openInvite = async (serverId?: string) => {
+  const url = await getInviteUrl(serverId);
+  if (!url) throw new Error("Invite link unavailable. Try again in a moment.");
+  window.open(url, "_blank", "noopener,noreferrer");
+};
+
 const stripVoicePrefix = (value: string) => value.replace(/^voice\s*-\s*/i, "").trim() || value;
 
 export async function getMetadata(serverId: string): Promise<ServerMetadata> {

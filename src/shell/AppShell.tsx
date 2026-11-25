@@ -9,13 +9,15 @@ import { UnsavedChangesProvider, useUnsavedChanges } from "../hooks/useEditable"
 import { useHotkey } from "../hooks/useHotkey";
 import { ServerScope } from "../hooks/useServerResource";
 import { rememberServer, useServers } from "../hooks/useServers";
-import { BotStatus, useBotState } from "./BotStatus";
+import { BotStatus } from "../components/ui/BotStatus";
+import { useBotState } from "../hooks/useBotState";
 import { CommandPalette, type PaletteItem } from "./CommandPalette";
 import { NoBotPage } from "./NoBotPage";
 import { SectionOutlet } from "./SectionOutlet";
 import { sectionByKey, sectionPath, sections, type SectionKey } from "./sections";
 import { Sidebar } from "./Sidebar";
-import { openInvite, ServerSwitcher } from "./ServerSwitcher";
+import { openInvite } from "../api/endpoints/servers";
+import { ServerSwitcher } from "./ServerSwitcher";
 import { UnsavedBar } from "./UnsavedBar";
 
 const COLLAPSED_KEY = "conqbot.sidebarCollapsed";
