@@ -11,10 +11,10 @@ const LEVELS = ["all", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
 
 const levelStyle = (level: string): { icon: IconName; color: string } => {
   const l = level.toUpperCase();
-  if (l === "ERROR" || l === "CRITICAL") return { icon: "warning", color: "var(--bd-err)" };
-  if (l === "WARNING") return { icon: "warning", color: "var(--bd-warn)" };
-  if (l === "DEBUG") return { icon: "console", color: "var(--bd-text-muted)" };
-  return { icon: "info", color: "var(--bd-text-2)" };
+  if (l === "ERROR" || l === "CRITICAL") return { icon: "warning", color: "var(--cb-err)" };
+  if (l === "WARNING") return { icon: "warning", color: "var(--cb-warn)" };
+  if (l === "DEBUG") return { icon: "console", color: "var(--cb-text-muted)" };
+  return { icon: "info", color: "var(--cb-text-2)" };
 };
 
 const when = (iso?: string) => {

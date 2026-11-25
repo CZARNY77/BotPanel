@@ -129,6 +129,7 @@ const ShellInner = () => {
         onToggleCollapsed={toggleCollapsed}
         onSearch={() => setPalette(true)}
         onNavigate={() => setDrawer(false)}
+        onInvite={() => void invite(serverId)}
         guard={unsaved.block}
       />
       <div className="drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden="true" />

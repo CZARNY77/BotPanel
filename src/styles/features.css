@@ -3,10 +3,10 @@
 /* ---------- command palette */
 .palette {
   width: min(600px, 100%);
-  background: var(--bd-surface);
-  border: 1px solid var(--bd-border-strong);
-  border-radius: var(--bd-radius-panel);
-  box-shadow: var(--bd-shadow);
+  background: var(--cb-surface);
+  border: 1px solid var(--cb-border-strong);
+  border-radius: var(--cb-radius-panel);
+  box-shadow: var(--cb-shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -16,10 +16,10 @@
 .palette__input {
   display: flex;
   align-items: center;
-  gap: var(--bd-space-3);
-  padding: 0 var(--bd-space-4);
-  border-bottom: 1px solid var(--bd-border);
-  color: var(--bd-text-muted);
+  gap: var(--cb-space-3);
+  padding: 0 var(--cb-space-4);
+  border-bottom: 1px solid var(--cb-border);
+  color: var(--cb-text-muted);
 }
 
 .palette__input input {
@@ -28,19 +28,19 @@
   background: none;
   border: 0;
   outline: none;
-  font-size: var(--bd-fs-lg);
-  color: var(--bd-text);
+  font-size: var(--cb-fs-lg);
+  color: var(--cb-text);
 }
 
 .palette__list {
   overflow: auto;
-  padding: var(--bd-space-1) var(--bd-space-2) var(--bd-space-2);
+  padding: var(--cb-space-1) var(--cb-space-2) var(--cb-space-2);
 }
 
 .palette__group {
-  padding: var(--bd-space-3) var(--bd-space-2) var(--bd-space-1);
-  font-size: var(--bd-fs-xs);
-  color: var(--bd-text-muted);
+  padding: var(--cb-space-3) var(--cb-space-2) var(--cb-space-1);
+  font-size: var(--cb-fs-xs);
+  color: var(--cb-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -50,18 +50,18 @@
 }
 
 .palette__option.active {
-  background: var(--bd-primary-soft);
+  background: var(--cb-primary-soft);
 }
 
 .palette__option.active .icon {
-  color: var(--bd-primary);
+  color: var(--cb-primary);
 }
 
 .palette__foot {
   display: flex;
-  gap: var(--bd-space-4);
-  padding: var(--bd-space-2) var(--bd-space-4);
-  border-top: 1px solid var(--bd-border);
+  gap: var(--cb-space-4);
+  padding: var(--cb-space-2) var(--cb-space-4);
+  border-top: 1px solid var(--cb-border);
 }
 
 /* ---------- bot status */
@@ -72,10 +72,10 @@
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  background: var(--bd-surface-alt);
-  font-size: var(--bd-fs-sm);
+  background: var(--cb-surface-alt);
+  font-size: var(--cb-fs-sm);
   font-weight: 600;
-  color: var(--bd-text-2);
+  color: var(--cb-text-2);
 }
 
 @media (max-width: 640px) {
@@ -93,8 +93,8 @@
 .dc {
   background: var(--cb-discord-bg);
   color: var(--cb-discord-text);
-  border-radius: var(--bd-radius-panel);
-  padding: var(--bd-space-4);
+  border-radius: var(--cb-radius-panel);
+  padding: var(--cb-space-4);
   font-size: 15px;
   line-height: 1.375;
 }
@@ -103,9 +103,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: var(--bd-space-2);
-  font-size: var(--bd-fs-xs);
-  color: var(--bd-text-muted);
+  margin-bottom: var(--cb-space-2);
+  font-size: var(--cb-fs-xs);
+  color: var(--cb-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -170,7 +170,7 @@
   margin-top: 6px;
   max-width: 440px;
   display: flex;
-  gap: var(--bd-space-3);
+  gap: var(--cb-space-3);
   background: var(--cb-discord-embed);
   border-left: 4px solid var(--embed, var(--cb-discord-blurple));
   border-radius: 4px;

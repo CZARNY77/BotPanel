@@ -1,10 +1,10 @@
 import type { BotState } from "../../api/types";
 
 const labels: Record<BotState, { text: string; tone: string; title: string }> = {
-  online: { text: "Online", tone: "var(--bd-ok)", title: "ConqBot is online" },
-  starting: { text: "Starting", tone: "var(--bd-warn)", title: "ConqBot is starting. Changes may take a moment." },
-  offline: { text: "Offline", tone: "var(--bd-err)", title: "ConqBot is not responding" },
-  unknown: { text: "Checking", tone: "var(--bd-text-muted)", title: "Checking bot status" },
+  online: { text: "Online", tone: "var(--cb-ok)", title: "ConqBot is online" },
+  starting: { text: "Starting", tone: "var(--cb-warn)", title: "ConqBot is starting. Changes may take a moment." },
+  offline: { text: "Offline", tone: "var(--cb-err)", title: "ConqBot is not responding" },
+  unknown: { text: "Checking", tone: "var(--cb-text-muted)", title: "Checking bot status" },
 };
 
 export const BotStatus = ({ state }: { state: BotState }) => {

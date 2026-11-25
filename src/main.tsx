@@ -5,7 +5,6 @@ import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import { sendClientLog } from "./api/endpoints/auth";
 import { ToastProvider } from "./components/ui/Toast";
-import "./styles/skin-blcdev.css";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/components.css";
@@ -16,6 +15,7 @@ import "./styles/shell.css";
 import "./styles/features.css";
 import "./styles/sections.css";
 import "./styles/public.css";
+import "./styles/landing.css";
 
 const reportClientError = (message: string, context?: Record<string, unknown>) => {
   sendClientLog("ERROR", message, context).catch(() => undefined);

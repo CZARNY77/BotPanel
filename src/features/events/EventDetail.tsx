@@ -10,9 +10,9 @@ import { useServerScope } from "../../hooks/useServerResource";
 import { dateParts, durationLabel, repeatLabel } from "./model";
 
 const STATUS: { key: SignupStatus; label: string; icon: IconName; tone: string }[] = [
-  { key: "Yes", label: "Going", icon: "yes", tone: "var(--bd-ok)" },
-  { key: "Maybe", label: "Maybe", icon: "maybe", tone: "var(--bd-warn)" },
-  { key: "No", label: "Not going", icon: "no", tone: "var(--bd-err)" },
+  { key: "Yes", label: "Going", icon: "yes", tone: "var(--cb-ok)" },
+  { key: "Maybe", label: "Maybe", icon: "maybe", tone: "var(--cb-warn)" },
+  { key: "No", label: "Not going", icon: "no", tone: "var(--cb-err)" },
 ];
 
 const PINGS: { mode: EventPingMode; label: string; title: string }[] = [

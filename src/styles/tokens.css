@@ -1,31 +1,104 @@
-/* App-level tokens. Theme colours come only from --bd-* (skin-blcdev.css).
-   --cb-* are ConqBot layout sizes and domain data (Discord preview colours), not theme. */
+/* ConqBot tokens: the only place with theme values. Style follows conqsite.com (same family as ConqBot):
+   charcoal background, sand-gold accent, light text, thin #2e3238 lines, 6 px corners, Inter.
+   Dark only, like ConqSite. Everything in src/ uses var(--cb-*); no other token prefix. */
 :root {
-  --cb-sidebar-w: 236px;
+  color-scheme: dark;
+
+  /* surfaces */
+  --cb-bg: #1c1c1c;
+  --cb-surface: #1e2124;          /* ConqSite card: hsl(215 10% 13%) */
+  --cb-surface-alt: #24282c;
+  --cb-hover: #2a2e33;
+  --cb-glass: rgb(30 33 36 / 0.8); /* sidebar: semi-transparent card + blur */
+
+  /* text (contrast on --cb-bg: 18.1 / 11.9 / 6.6) */
+  --cb-text: #f7f7f7;
+  --cb-text-2: #c7cbd1;
+  --cb-text-muted: #9ba1a9;
+  --cb-link: #ffda9e;
+
+  /* lines and inputs */
+  --cb-border: #2e3238;
+  --cb-border-strong: #3c4148;
+  --cb-input: #4a5058;
+
+  /* gold: headings, main button, active item */
+  --cb-gold: #ffda9e;
+  --cb-primary: #ffda9e;
+  --cb-primary-hover: #ffe6bf;
+  --cb-primary-ink: #1c1c1c;
+  --cb-primary-soft: rgb(255 218 158 / 0.1);
+  --cb-primary-line: rgb(255 218 158 / 0.2);
+  --cb-amber: #e6971a;             /* ConqSite --primary, used sparingly */
+
+  /* states (readable on dark) */
+  --cb-accent: #4ade80;            /* on / active (toggles, flow) */
+  --cb-ok: #4ade80;
+  --cb-ok-soft: rgb(74 222 128 / 0.12);
+  --cb-warn: #fbbf24;
+  --cb-warn-soft: rgb(251 191 36 / 0.12);
+  --cb-err: #f87171;
+  --cb-err-soft: rgb(248 113 113 / 0.12);
+  --cb-orange: #fb923c;
+  --cb-red: #f87171;
+  --cb-yellow: #facc15;
+  --cb-slate: #a1a1aa;
+
+  /* type */
+  --cb-font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --cb-font-display: var(--cb-font);
+  --cb-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+  --cb-fs-xs: 12px;
+  --cb-fs-sm: 13px;
+  --cb-fs-md: 14px;
+  --cb-fs-lg: 16px;
+  --cb-fs-xl: 24px;
+  --cb-fs-h1: 30px;
+  --cb-fs-h2: 18px;
+
+  /* shape */
+  --cb-radius-panel: 8px;
+  --cb-radius-card: 6px;
+  --cb-radius-control: 6px;
+  --cb-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.5);
+
+  /* spacing */
+  --cb-space-1: 4px;
+  --cb-space-2: 8px;
+  --cb-space-3: 12px;
+  --cb-space-4: 16px;
+  --cb-space-5: 24px;
+  --cb-space-6: 32px;
+  --cb-control-h: 36px;
+
+  /* layout */
+  --cb-sidebar-w: 240px;
   --cb-sidebar-w-collapsed: 60px;
   --cb-topbar-h: 56px;
   --cb-content-max: 1320px;
-  --cb-fs-h1: 28px;
-  --cb-fs-h2: 17px;
-  --cb-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
 
-  /* Discord message preview: this mimics Discord itself, so it is data, not our theme. */
+  /* page glow (ConqSite body background) */
+  --cb-glow:
+    radial-gradient(80% 50% at 20% 40%, rgb(255 218 158 / 0.1), transparent),
+    radial-gradient(60% 40% at 80% 20%, rgb(255 218 158 / 0.07), transparent);
+
+  /* Discord message preview: mimics Discord itself, so it is data, not our theme. */
   --cb-discord-bg: #313338;
   --cb-discord-embed: #2b2d31;
   --cb-discord-text: #dbdee1;
   --cb-discord-muted: #949ba4;
   --cb-discord-blurple: #5865f2;
-  --cb-discord-mention: rgb(88 101 242 / .3);
+  --cb-discord-mention: rgb(88 101 242 / 0.3);
 
-  /* Section hues (category = colour + icon). Mixed from skin tokens. */
-  --cb-hue-overview: var(--bd-text-2);
-  --cb-hue-greetings: var(--bd-ok);
-  --cb-hue-events: var(--bd-primary);
-  --cb-hue-voice: var(--bd-warn);
-  --cb-hue-emoji: var(--bd-drobne);
-  --cb-hue-reactions: var(--bd-wazne);
-  --cb-hue-autorole: var(--bd-accent);
-  --cb-hue-moderation: var(--bd-err);
-  --cb-hue-settings: var(--bd-info);
-  --cb-hue-console: var(--bd-info);
+  /* Section hues (category = colour + icon). */
+  --cb-hue-overview: #c7cbd1;
+  --cb-hue-greetings: #4ade80;
+  --cb-hue-events: #ffda9e;
+  --cb-hue-voice: #7dd3fc;
+  --cb-hue-emoji: #facc15;
+  --cb-hue-reactions: #fb923c;
+  --cb-hue-autorole: #c4b5fd;
+  --cb-hue-moderation: #f87171;
+  --cb-hue-settings: #a1a1aa;
+  --cb-hue-console: #a1a1aa;
 }

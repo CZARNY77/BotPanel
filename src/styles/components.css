@@ -21,13 +21,13 @@
 }
 
 kbd {
-  font-family: var(--bd-font);
+  font-family: var(--cb-mono);
   font-size: 11px;
-  padding: 1px 5px;
-  border: 1px solid var(--bd-border-strong);
-  border-radius: 3px;
-  color: var(--bd-text-muted);
-  background: var(--bd-surface-alt);
+  padding: 1px 6px;
+  border: 1px solid var(--cb-border);
+  border-radius: 4px;
+  color: var(--cb-text-2);
+  background: var(--cb-bg);
 }
 
 /* ---------- buttons */
@@ -35,13 +35,13 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--bd-space-2);
-  height: var(--bd-control-h);
-  padding: 0 var(--bd-space-4);
+  gap: var(--cb-space-2);
+  height: var(--cb-control-h);
+  padding: 0 var(--cb-space-4);
   border: 1px solid transparent;
-  border-radius: var(--bd-radius-control);
+  border-radius: var(--cb-radius-control);
   font-weight: 600;
-  font-size: var(--bd-fs-md);
+  font-size: var(--cb-fs-md);
   white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
@@ -58,51 +58,53 @@ kbd {
 }
 
 .btn-primary {
-  background: var(--bd-primary);
-  color: var(--bd-primary-ink);
+  background: var(--cb-primary);
+  color: var(--cb-primary-ink);
+  font-weight: 700;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--bd-primary-hover);
+  background: var(--cb-primary-hover);
 }
 
 .btn-secondary {
-  background: transparent;
-  border-color: var(--bd-border-strong);
-  color: var(--bd-text);
+  background: var(--cb-bg);
+  border-color: var(--cb-border);
+  color: var(--cb-text);
+  font-weight: 500;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--bd-hover);
+  background: var(--cb-hover);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--bd-text-2);
+  color: var(--cb-text-2);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: var(--bd-hover);
-  color: var(--bd-text);
+  background: var(--cb-hover);
+  color: var(--cb-text);
 }
 
 .btn-danger {
   background: transparent;
-  color: var(--bd-err);
+  color: var(--cb-err);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--bd-err-soft);
+  background: var(--cb-err-soft);
 }
 
 .btn-sm {
   height: 30px;
-  padding: 0 var(--bd-space-3);
-  font-size: var(--bd-fs-sm);
+  padding: 0 var(--cb-space-3);
+  font-size: var(--cb-fs-sm);
 }
 
 .btn-icon {
-  width: var(--bd-control-h);
+  width: var(--cb-control-h);
   padding: 0;
 }
 
@@ -119,17 +121,17 @@ kbd {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  font-size: var(--bd-fs-xs);
+  font-size: var(--cb-fs-xs);
   font-weight: 600;
   white-space: nowrap;
-  background: var(--bd-surface-alt);
-  color: var(--bd-text-2);
+  background: var(--cb-surface-alt);
+  color: var(--cb-text-2);
 }
 
-.pill--ok { background: var(--bd-ok-soft); color: var(--bd-ok); }
-.pill--warn { background: var(--bd-warn-soft); color: var(--bd-warn); }
-.pill--err { background: var(--bd-err-soft); color: var(--bd-err); }
-.pill--primary { background: var(--bd-primary-soft); color: var(--bd-primary); }
+.pill--ok { background: var(--cb-ok-soft); color: var(--cb-ok); }
+.pill--warn { background: var(--cb-warn-soft); color: var(--cb-warn); }
+.pill--err { background: var(--cb-err-soft); color: var(--cb-err); }
+.pill--primary { background: var(--cb-primary-soft); color: var(--cb-primary); }
 
 .dot {
   width: 8px;
@@ -142,8 +144,8 @@ kbd {
 /* ---------- tabs */
 .tabs {
   display: flex;
-  gap: var(--bd-space-1);
-  border-bottom: 1px solid var(--bd-border);
+  gap: var(--cb-space-1);
+  border-bottom: 1px solid var(--cb-border);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -152,29 +154,29 @@ kbd {
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: var(--bd-space-2);
+  gap: var(--cb-space-2);
   height: 38px;
-  padding: 0 var(--bd-space-3);
+  padding: 0 var(--cb-space-3);
   background: none;
   border: 0;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  color: var(--bd-text-muted);
+  color: var(--cb-text-muted);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .tab:hover {
-  color: var(--bd-text);
+  color: var(--cb-text);
 }
 
 .tab[aria-selected="true"] {
-  color: var(--bd-text);
-  border-bottom-color: var(--bd-primary);
+  color: var(--cb-text);
+  border-bottom-color: var(--cb-primary);
 }
 
 .tab__count {
-  font-size: var(--bd-fs-xs);
-  color: var(--bd-text-muted);
+  font-size: var(--cb-fs-xs);
+  color: var(--cb-text-muted);
 }

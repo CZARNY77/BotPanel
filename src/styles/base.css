@@ -11,10 +11,11 @@ body {
 }
 
 body {
-  background: var(--bd-bg);
-  color: var(--bd-text);
-  font-family: var(--bd-font);
-  font-size: var(--bd-fs-md);
+  min-height: 100vh;
+  background: var(--cb-glow) fixed, var(--cb-bg);
+  color: var(--cb-text);
+  font-family: var(--cb-font);
+  font-size: var(--cb-fs-md);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -25,7 +26,7 @@ h2,
 h3,
 h4 {
   margin: 0;
-  font-family: var(--bd-font-display);
+  font-family: var(--cb-font-display);
   line-height: 1.2;
   letter-spacing: -0.01em;
 }
@@ -33,15 +34,17 @@ h4 {
 h1 {
   font-size: var(--cb-fs-h1);
   font-weight: 700;
+  color: var(--cb-gold);
 }
 
 h2 {
   font-size: var(--cb-fs-h2);
-  font-weight: 650;
+  font-weight: 600;
+  color: var(--cb-gold);
 }
 
 h3 {
-  font-size: var(--bd-fs-md);
+  font-size: var(--cb-fs-md);
   font-weight: 650;
 }
 
@@ -50,7 +53,7 @@ p {
 }
 
 a {
-  color: var(--bd-link);
+  color: var(--cb-link);
   text-decoration: none;
 }
 
@@ -72,24 +75,25 @@ img {
 }
 
 :focus-visible {
-  outline: 2px solid var(--bd-primary);
+  outline: 2px solid var(--cb-primary);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--bd-primary-soft);
+  background: var(--cb-gold);
+  color: var(--cb-primary-ink);
 }
 
 .muted {
-  color: var(--bd-text-muted);
+  color: var(--cb-text-muted);
 }
 
 .small {
-  font-size: var(--bd-fs-sm);
+  font-size: var(--cb-fs-sm);
 }
 
 .xs {
-  font-size: var(--bd-fs-xs);
+  font-size: var(--cb-fs-xs);
 }
 
 .num {
@@ -98,7 +102,7 @@ img {
 
 .mono {
   font-family: var(--cb-mono);
-  font-size: var(--bd-fs-sm);
+  font-size: var(--cb-fs-sm);
 }
 
 .sr-only {
@@ -117,7 +121,7 @@ img {
 .row {
   display: flex;
   align-items: center;
-  gap: var(--bd-space-2);
+  gap: var(--cb-space-2);
   flex-wrap: wrap;
 }
 
@@ -128,11 +132,11 @@ img {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: var(--bd-space-3);
+  gap: var(--cb-space-3);
 }
 
 .stack--lg {
-  gap: var(--bd-space-5);
+  gap: var(--cb-space-5);
 }
 
 .grow {

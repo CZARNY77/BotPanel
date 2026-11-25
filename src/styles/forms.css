@@ -8,45 +8,45 @@
 }
 
 .field__label {
-  font-size: var(--bd-fs-sm);
+  font-size: var(--cb-fs-sm);
   font-weight: 600;
-  color: var(--bd-text-2);
+  color: var(--cb-text-2);
 }
 
 .field__hint {
-  font-size: var(--bd-fs-xs);
-  color: var(--bd-text-muted);
+  font-size: var(--cb-fs-xs);
+  color: var(--cb-text-muted);
 }
 
 .field__error {
-  font-size: var(--bd-fs-xs);
-  color: var(--bd-err);
+  font-size: var(--cb-fs-xs);
+  color: var(--cb-err);
 }
 
 .input,
 .textarea,
 .select {
   width: 100%;
-  min-height: var(--bd-control-h);
+  min-height: var(--cb-control-h);
   padding: 7px 10px;
-  background: var(--bd-bg);
-  border: 1px solid var(--bd-input);
-  border-radius: var(--bd-radius-control);
-  color: var(--bd-text);
+  background: var(--cb-bg);
+  border: 1px solid var(--cb-input);
+  border-radius: var(--cb-radius-control);
+  color: var(--cb-text);
   outline: none;
 }
 
 .input:focus,
 .textarea:focus,
 .select:focus {
-  border-color: var(--bd-primary);
-  box-shadow: 0 0 0 3px var(--bd-primary-soft);
+  border-color: var(--cb-primary);
+  box-shadow: 0 0 0 3px var(--cb-primary-soft);
 }
 
 .input[aria-invalid="true"],
 .textarea[aria-invalid="true"] {
-  border-color: var(--bd-err);
-  background: var(--bd-err-soft);
+  border-color: var(--cb-err);
+  background: var(--cb-err-soft);
 }
 
 .input:disabled,
@@ -69,7 +69,7 @@
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--bd-space-4);
+  gap: var(--cb-space-4);
 }
 
 .form-grid--3 {
@@ -97,11 +97,11 @@
   right: 0;
   max-height: 280px;
   overflow: auto;
-  padding: var(--bd-space-1);
-  background: var(--bd-surface);
-  border: 1px solid var(--bd-border-strong);
-  border-radius: var(--bd-radius-panel);
-  box-shadow: var(--bd-shadow);
+  padding: var(--cb-space-1);
+  background: var(--cb-surface);
+  border: 1px solid var(--cb-border-strong);
+  border-radius: var(--cb-radius-panel);
+  box-shadow: var(--cb-shadow);
 }
 
 .popover--wide {
@@ -112,30 +112,30 @@
 .option {
   display: flex;
   align-items: center;
-  gap: var(--bd-space-2);
+  gap: var(--cb-space-2);
   width: 100%;
   min-height: 32px;
   padding: 4px 8px;
   background: none;
   border: 0;
-  border-radius: var(--bd-radius-control);
+  border-radius: var(--cb-radius-control);
   text-align: left;
   cursor: pointer;
 }
 
 .option:hover,
 .option.active {
-  background: var(--bd-hover);
+  background: var(--cb-hover);
 }
 
 .option[aria-selected="true"] {
-  color: var(--bd-primary);
+  color: var(--cb-primary);
 }
 
 .option-empty {
-  padding: var(--bd-space-2);
-  color: var(--bd-text-muted);
-  font-size: var(--bd-fs-sm);
+  padding: var(--cb-space-2);
+  color: var(--cb-text-muted);
+  font-size: var(--cb-fs-sm);
 }
 
 /* ---------- chips */
@@ -151,10 +151,10 @@
   gap: 4px;
   height: 26px;
   padding: 0 4px 0 10px;
-  background: var(--bd-surface-alt);
-  border: 1px solid var(--bd-border);
+  background: var(--cb-surface-alt);
+  border: 1px solid var(--cb-border);
   border-radius: 999px;
-  font-size: var(--bd-fs-sm);
+  font-size: var(--cb-fs-sm);
 }
 
 .chip button {
@@ -165,20 +165,20 @@
   background: none;
   border: 0;
   border-radius: 999px;
-  color: var(--bd-text-muted);
+  color: var(--cb-text-muted);
   cursor: pointer;
 }
 
 .chip button:hover {
-  background: var(--bd-hover);
-  color: var(--bd-err);
+  background: var(--cb-hover);
+  color: var(--cb-err);
 }
 
 /* ---------- toggle */
 .toggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--bd-space-2);
+  gap: var(--cb-space-2);
   cursor: pointer;
   user-select: none;
 }
@@ -194,7 +194,7 @@
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  background: var(--bd-border-strong);
+  background: var(--cb-border-strong);
   transition: background 0.15s ease;
   flex: none;
 }
@@ -207,12 +207,12 @@
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  background: var(--bd-text);
+  background: var(--cb-text);
   transition: transform 0.15s ease;
 }
 
 .toggle input:checked + .toggle__track {
-  background: var(--bd-accent);
+  background: var(--cb-accent);
 }
 
 .toggle input:checked + .toggle__track::after {
@@ -220,7 +220,7 @@
 }
 
 .toggle input:focus-visible + .toggle__track {
-  outline: 2px solid var(--bd-primary);
+  outline: 2px solid var(--cb-primary);
   outline-offset: 2px;
 }
 
@@ -230,9 +230,9 @@
   flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
-  background: var(--bd-bg);
-  border: 1px solid var(--bd-input);
-  border-radius: var(--bd-radius-control);
+  background: var(--cb-bg);
+  border: 1px solid var(--cb-input);
+  border-radius: var(--cb-radius-control);
 }
 
 .day-select__day {
@@ -242,50 +242,50 @@
   background: none;
   border: 0;
   border-radius: 2px;
-  color: var(--bd-text-muted);
+  color: var(--cb-text-muted);
   font-weight: 600;
-  font-size: var(--bd-fs-sm);
+  font-size: var(--cb-fs-sm);
   cursor: pointer;
 }
 
 .day-select__day:hover {
-  color: var(--bd-text);
-  background: var(--bd-hover);
+  color: var(--cb-text);
+  background: var(--cb-hover);
 }
 
 .day-select__day.active {
-  background: var(--bd-primary);
-  color: var(--bd-primary-ink);
+  background: var(--cb-primary);
+  color: var(--cb-primary-ink);
 }
 
 .emoji-slot {
-  width: var(--bd-control-h);
+  width: var(--cb-control-h);
   padding: 0;
 }
 
 .emoji-slot--invalid {
-  border-color: var(--bd-err);
-  background: var(--bd-err-soft);
+  border-color: var(--cb-err);
+  background: var(--cb-err-soft);
 }
 
 .segmented {
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  background: var(--bd-bg);
-  border: 1px solid var(--bd-border-strong);
-  border-radius: var(--bd-radius-control);
+  background: var(--cb-bg);
+  border: 1px solid var(--cb-border-strong);
+  border-radius: var(--cb-radius-control);
 }
 
 .segmented button {
   height: 30px;
-  padding: 0 var(--bd-space-3);
+  padding: 0 var(--cb-space-3);
   background: none;
   border: 0;
   border-radius: 2px;
-  color: var(--bd-text-muted);
+  color: var(--cb-text-muted);
   font-weight: 600;
-  font-size: var(--bd-fs-sm);
+  font-size: var(--cb-fs-sm);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -293,6 +293,6 @@
 }
 
 .segmented button[aria-pressed="true"] {
-  background: var(--bd-hover);
-  color: var(--bd-text);
+  background: var(--cb-hover);
+  color: var(--cb-text);
 }

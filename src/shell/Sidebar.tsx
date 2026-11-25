@@ -13,6 +13,7 @@ export const Sidebar = ({
   onToggleCollapsed,
   onSearch,
   onNavigate,
+  onInvite,
   guard,
 }: {
   serverId: string;
@@ -21,6 +22,7 @@ export const Sidebar = ({
   onToggleCollapsed: () => void;
   onSearch: () => void;
   onNavigate: () => void;
+  onInvite: () => void;
   /** Returns true when navigation must be blocked (unsaved changes). */
   guard: () => boolean;
 }) => {
@@ -43,6 +45,7 @@ export const Sidebar = ({
     >
       <Icon name={section.icon} />
       <span className="sidebar__text">{section.label}</span>
+      <Icon name="chevronRight" size="sm" className="nav-item__arrow sidebar__text" />
     </NavLink>
   );
 
@@ -65,13 +68,16 @@ export const Sidebar = ({
         </nav>
       ) : null}
       <div className="sidebar__foot">
+        <button type="button" className="btn btn-primary sidebar__invite" onClick={onInvite} title="Add ConqBot to a server">
+          <Icon name="plus" size="sm" />
+          <span className="sidebar__text">Add ConqBot</span>
+        </button>
         <button
           type="button"
           className="nav-item sidebar__collapse"
           onClick={onToggleCollapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          style={{ background: "none", border: 0, cursor: "pointer", width: "100%" }}
         >
           <Icon name="chevronLeft" />
           <span className="sidebar__text">Collapse</span>
