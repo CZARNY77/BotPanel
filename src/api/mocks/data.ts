@@ -62,8 +62,8 @@ export const metadata: Record<string, ApiMetadata> = {
 
 export const emojis: Record<string, EmojiOption[]> = {
   "9001": [
-    { id: "<:flame:123456789>", name: "flame", url: "https://cdn.discordapp.com/emojis/123456789.png" },
-    { id: "<:shield:987654321>", name: "shield", url: "https://cdn.discordapp.com/emojis/987654321.png" },
+    { id: "<:flame:123456789>", name: "flame", url: "https://placehold.co/32x32/f97316/0b0b0b?text=F" },
+    { id: "<:shield:987654321>", name: "shield", url: "https://placehold.co/32x32/22c55e/0b0b0b?text=S" },
   ],
 };
 
@@ -175,8 +175,8 @@ export const roleReactions: Record<string, RoleReactionSettings> = {
         message: "React below to pick your unit type.",
         embed: { title: "Choose your role", description: "React below to pick your unit type.", color: "#f97316" },
         pairs: [
-          { emoji: "<:flame:123456789>", roleId: "555" },
-          { emoji: "<:shield:987654321>", roleId: "666" },
+          { emoji: "⚔️", roleId: "555" },
+          { emoji: "🛡️", roleId: "666" },
         ],
         messageId: "1300000000000000099",
       },
