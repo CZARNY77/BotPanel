@@ -255,3 +255,11 @@
     grid-column: auto;
   }
 }
+
+a.list-row {
+  color: inherit;
+}
+
+a.list-row:hover {
+  text-decoration: none;
+}

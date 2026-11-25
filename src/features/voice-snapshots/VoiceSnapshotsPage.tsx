@@ -78,7 +78,7 @@ export default function VoiceSnapshotsPage() {
             settings.loading ? <PageSkeleton rows={3} /> : null
           ) : (
             <>
-              <Group title="Run now" icon="play" description="Used by the Run now button.">
+              <Group title="Manual snapshot" icon="play" description="Settings used by the Run now button.">
                 <div className="form-grid">
                   <Field label="Label" hint="Shown in history">
                     <TextInput value={value.manualName} placeholder="e.g. Weekly voice check" onChange={(manualName) => edit.set({ ...value, manualName })} />
