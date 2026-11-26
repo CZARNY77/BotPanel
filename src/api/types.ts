@@ -31,7 +31,8 @@ export type Server = {
   id: string;
   name: string;
   iconUrl: string | null;
-  role: "owner" | "admin" | "manager";
+  /** `panel`: opened by a panel admin, outside the user's own list. */
+  role: "owner" | "admin" | "manager" | "panel";
   botPresent: boolean;
   memberCount: number | null;
 };
@@ -216,3 +217,21 @@ export type AdminLogEntry = {
 
 /** K16 */
 export type UploadResult = { upload_id: string; path: string; url: string };
+
+/** GET /api/admin/servers: every server the bot is on (panel admins only, 403 otherwise). */
+export type ApiAdminServer = {
+  id: string;
+  name: string;
+  icon_url: string | null;
+  member_count: number | null;
+  owner_id: string | null;
+  bot_present: boolean;
+};
+
+export type AdminServer = {
+  id: string;
+  name: string;
+  iconUrl: string | null;
+  memberCount: number | null;
+  ownerId: string | null;
+};

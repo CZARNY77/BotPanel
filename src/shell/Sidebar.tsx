@@ -16,6 +16,7 @@ export const Sidebar = ({
   botState,
   user,
   isAdmin,
+  adminAccess = false,
   collapsed,
   onToggleCollapsed,
   onSearch,
@@ -28,6 +29,8 @@ export const Sidebar = ({
   botState: BotState;
   user: User | null;
   isAdmin: boolean;
+  /** The open server is outside the user's own list (panel admin access). */
+  adminAccess?: boolean;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onSearch: () => void;
@@ -64,11 +67,24 @@ export const Sidebar = ({
 
   return (
     <aside className="sidebar" aria-label={t("sidebar.label")}>
-      <div className="sidebar__head">
+      <div className={`sidebar__head${adminAccess ? " sidebar__head--admin" : ""}`}>
         <div className="sidebar__server sidebar__text">
           <strong className="truncate" title={server?.name}>{server?.name ?? "ConqBot"}</strong>
-          <BotStatus state={botState} />
+          <span className="sidebar__status">
+            <BotStatus state={botState} />
+            {adminAccess ? (
+              <span className="admin-access" title={t("admin.accessTitle")}>
+                <Icon name="lock" size="sm" />
+                {t("admin.access")}
+              </span>
+            ) : null}
+          </span>
         </div>
+        {adminAccess ? (
+          <span className="admin-access admin-access--icon" title={t("admin.accessTitle")} aria-hidden="true">
+            <Icon name="lock" size="sm" />
+          </span>
+        ) : null}
         <IconButton icon="chevronLeft" label={collapseLabel} className="sidebar__collapse" onClick={onToggleCollapsed} />
       </div>
       <button type="button" className="sidebar__search" onClick={onSearch} title={t("search.title")}>

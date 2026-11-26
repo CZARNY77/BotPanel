@@ -1,4 +1,5 @@
-// Server rail on the far left, like Discord: logo, servers with the bot, servers without it (Add bot), policy links.
+// Server rail on the far left, like Discord: logo, All servers (panel admin), servers with the bot,
+// a server opened with admin access, servers without the bot (Add bot), policy links.
 import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 import type { Server } from "../api/types";
@@ -13,7 +14,7 @@ const initials = (name: string) =>
     .map((word) => word[0]?.toUpperCase())
     .join("");
 
-const ServerAvatar = ({ server }: { server: Server }) =>
+export const ServerAvatar = ({ server }: { server: { name: string; iconUrl: string | null } }) =>
   server.iconUrl ? <img src={server.iconUrl} alt="" /> : <span>{initials(server.name)}</span>;
 
 export const ServerRail = ({
@@ -21,11 +22,20 @@ export const ServerRail = ({
   currentId,
   onSelect,
   onInvite,
+  isAdmin = false,
+  allOpen = false,
+  onAllServers,
+  recent = null,
 }: {
   servers: Server[];
   currentId: string;
   onSelect: (server: Server) => void;
   onInvite: (serverId?: string) => void;
+  isAdmin?: boolean;
+  allOpen?: boolean;
+  onAllServers?: () => void;
+  /** Last server opened with admin access (outside the user's own list), max one. */
+  recent?: Server | null;
 }) => {
   const { t } = useT();
   const withBot = servers.filter((server) => server.botPresent);
@@ -37,6 +47,21 @@ export const ServerRail = ({
         <img src={logo} alt="" />
       </Link>
       <div className="rail__list">
+        {isAdmin ? (
+          <>
+            <button
+              type="button"
+              className={`rail__server rail__all${allOpen ? " active" : ""}`}
+              aria-expanded={allOpen}
+              title={t("rail.allServers")}
+              aria-label={t("rail.allServers")}
+              onClick={onAllServers}
+            >
+              <Icon name="globe" />
+            </button>
+            <span className="rail__divider" role="separator" />
+          </>
+        ) : null}
         {withBot.map((server) => {
           const active = server.id === currentId;
           return (
@@ -53,6 +78,24 @@ export const ServerRail = ({
             </button>
           );
         })}
+        {recent ? (
+          <>
+            <span className="rail__divider" role="separator" />
+            <button
+              type="button"
+              className={`rail__server rail__server--admin${recent.id === currentId ? " active" : ""}`}
+              aria-current={recent.id === currentId ? "page" : undefined}
+              title={t("rail.recent", { name: recent.name })}
+              aria-label={t("rail.recent", { name: recent.name })}
+              onClick={() => onSelect(recent)}
+            >
+              <ServerAvatar server={recent} />
+              <span className="rail__badge rail__badge--admin" aria-hidden="true">
+                <Icon name="lock" size="sm" />
+              </span>
+            </button>
+          </>
+        ) : null}
         {withoutBot.length ? (
           <>
             <span className="rail__divider" role="separator" />

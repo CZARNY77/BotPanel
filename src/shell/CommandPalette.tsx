@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "../components/ui/Icon";
 import { useT } from "../i18n";
+import { fold } from "./search";
 
 export type PaletteItem = {
   id: string;
@@ -10,15 +11,17 @@ export type PaletteItem = {
   hint?: string;
   icon: IconName;
   keywords?: string;
+  /** Shown only once the user types (e.g. the admin list of every server). */
+  searchOnly?: boolean;
   run: () => void;
 };
 
 const score = (item: PaletteItem, query: string) => {
-  if (!query) return 1;
-  const label = item.label.toLowerCase();
+  if (!query) return item.searchOnly ? 0 : 1;
+  const label = fold(item.label);
   if (label.startsWith(query)) return 3;
   if (label.includes(query)) return 2;
-  return `${item.keywords ?? ""} ${item.hint ?? ""}`.toLowerCase().includes(query) ? 1 : 0;
+  return fold(`${item.keywords ?? ""} ${item.hint ?? ""}`).includes(query) ? 1 : 0;
 };
 
 export const CommandPalette = ({ items, onClose }: { items: PaletteItem[]; onClose: () => void }) => {
@@ -28,7 +31,7 @@ export const CommandPalette = ({ items, onClose }: { items: PaletteItem[]; onClo
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = fold(query.trim());
     return items
       .map((item) => ({ item, s: score(item, q) }))
       .filter((entry) => entry.s > 0)

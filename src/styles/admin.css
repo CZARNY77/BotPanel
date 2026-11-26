@@ -1,0 +1,291 @@
+/* Panel admin: All servers button and flyout, server opened with admin access. Loaded after shell.css. */
+/* ---------- rail */
+.rail__all {
+  background: transparent;
+  color: var(--cb-admin);
+  box-shadow: inset 0 0 0 1px var(--cb-admin-line);
+}
+
+.rail__all:hover,
+.rail__all.active {
+  background: var(--cb-admin-soft);
+}
+
+.rail__all.active {
+  box-shadow: inset 0 0 0 1px var(--cb-admin);
+}
+
+.rail__all::before,
+.rail__server--admin::before {
+  background: var(--cb-admin);
+}
+
+.rail__server--admin.active {
+  box-shadow: 0 0 0 2px var(--cb-admin-line);
+}
+
+.rail__badge--admin {
+  background: var(--cb-admin);
+}
+
+/* ---------- sidebar head: admin access badge */
+.sidebar__status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.sidebar__head--admin {
+  box-shadow: inset 3px 0 0 var(--cb-admin);
+}
+
+.admin-access {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--cb-admin-soft);
+  color: var(--cb-admin);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.admin-access .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.admin-access--icon {
+  display: none;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  justify-content: center;
+}
+
+.shell--collapsed .admin-access--icon {
+  display: inline-flex;
+}
+
+/* ---------- All servers flyout (next to the rail) */
+.flyout-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.flyout {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: var(--cb-rail-w);
+  z-index: 45;
+  width: min(420px, calc(100vw - var(--cb-rail-w)));
+  display: flex;
+  flex-direction: column;
+  background: var(--cb-surface);
+  border-right: 1px solid var(--cb-border-strong);
+  box-shadow: var(--cb-shadow);
+}
+
+.flyout__head {
+  display: flex;
+  align-items: center;
+  gap: var(--cb-space-2);
+  height: var(--cb-brand-h);
+  flex: none;
+  padding: 0 var(--cb-space-2) 0 var(--cb-space-4);
+  border-bottom: 1px solid var(--cb-border);
+}
+
+.flyout__head h2 {
+  margin: 0;
+  font-size: var(--cb-fs-lg);
+  color: var(--cb-gold);
+}
+
+.flyout__icon {
+  color: var(--cb-admin);
+}
+
+.flyout__count {
+  font-size: var(--cb-fs-sm);
+  font-weight: 600;
+  color: var(--cb-text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.flyout__search {
+  display: flex;
+  align-items: center;
+  gap: var(--cb-space-2);
+  flex: none;
+  margin: var(--cb-space-3);
+  padding: 0 var(--cb-space-3);
+  height: var(--cb-control-h);
+  background: var(--cb-bg);
+  border: 1px solid var(--cb-input);
+  border-radius: var(--cb-radius-control);
+  color: var(--cb-text-muted);
+}
+
+.flyout__search:focus-within {
+  border-color: var(--cb-gold);
+}
+
+.flyout__search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--cb-text);
+  font: inherit;
+  font-size: var(--cb-fs-md);
+}
+
+.flyout__list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden auto;
+  padding: 0 var(--cb-space-2) var(--cb-space-3);
+}
+
+.flyout__skeleton {
+  display: grid;
+  gap: var(--cb-space-2);
+  padding: 0 var(--cb-space-1);
+}
+
+.flyout__empty {
+  margin: var(--cb-space-4) var(--cb-space-2);
+  color: var(--cb-text-2);
+}
+
+/* One row: avatar | name + ID | members | copy. content-visibility keeps ~300 rows cheap. */
+.srv-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--cb-space-3);
+  min-height: 52px;
+  padding: var(--cb-space-1) var(--cb-space-2);
+  border-radius: var(--cb-radius-control);
+  cursor: pointer;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+
+.srv-row.active {
+  background: var(--cb-hover);
+}
+
+.srv-row.current {
+  box-shadow: inset 3px 0 0 var(--cb-gold);
+}
+
+.srv-row__avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--cb-surface-alt);
+  color: var(--cb-gold);
+  font-size: var(--cb-fs-xs);
+  font-weight: 700;
+}
+
+.srv-row__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.srv-row__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.srv-row__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--cb-text);
+}
+
+.srv-row__own {
+  display: inline-flex;
+  color: var(--cb-gold);
+}
+
+.srv-row__id {
+  font-family: var(--cb-mono);
+  font-size: var(--cb-fs-xs);
+  color: var(--cb-text-muted);
+  user-select: all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.srv-row__members {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--cb-fs-sm);
+  color: var(--cb-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.srv-row__members .icon {
+  color: var(--cb-text-muted);
+}
+
+.srv-row__copy {
+  opacity: 0;
+  color: var(--cb-text-muted);
+}
+
+.srv-row:hover .srv-row__copy,
+.srv-row.active .srv-row__copy,
+.srv-row__copy:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 860px) {
+  .flyout,
+  .flyout-backdrop {
+    z-index: 50;
+  }
+
+  .flyout {
+    left: 0;
+    width: 100vw;
+  }
+
+  .admin-access--icon,
+  .shell--collapsed .admin-access--icon {
+    display: none;
+  }
+}
+
+@media (hover: none) {
+  .srv-row__copy {
+    opacity: 1;
+  }
+}

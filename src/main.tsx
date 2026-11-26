@@ -14,6 +14,7 @@ import "./styles/layout.css";
 import "./styles/overlays.css";
 import "./styles/rail.css";
 import "./styles/shell.css";
+import "./styles/admin.css";
 import "./styles/features.css";
 import "./styles/sections.css";
 import "./styles/public.css";

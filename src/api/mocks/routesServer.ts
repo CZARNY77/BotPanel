@@ -1,4 +1,5 @@
 import * as db from "./data";
+import { adminServers } from "./adminData";
 import {
   clone,
   expectType,
@@ -34,6 +35,8 @@ export const mockLogin = () => {
 export const requireGuild = (id: string) => {
   if (isLoggedOut()) fail("Not authenticated", 401);
   const server = db.servers.find((item) => item.id === id);
+  // Panel admins may open any server the bot is on, also outside their own list.
+  if (!server && db.mockUser.is_admin_panel && adminServers.some((item) => item.id === id)) return id;
   if (!server) fail("Missing admin permissions for this guild", 403);
   if (!server?.bot_present) fail("ConqBot cannot find this discord", 404);
   return id;
@@ -228,6 +231,15 @@ export const serverRoutes: MockRoute[] = [
         (log) => (!source || log.source === source) && (!level || log.level === level)
       );
       return ok({ logs: clone(list.slice(offset, offset + limit)), offset, limit });
+    },
+  },
+  {
+    method: "GET",
+    pattern: "/api/admin/servers",
+    handler: () => {
+      if (isLoggedOut()) fail("Not authenticated", 401);
+      if (!db.mockUser.is_admin_panel) fail("Forbidden", 403);
+      return ok({ servers: clone(adminServers), total: adminServers.length });
     },
   },
   { method: "GET", pattern: "/api/admin/users", handler: () => ok({ users: [...db.adminUsers] }) },

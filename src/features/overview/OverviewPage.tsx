@@ -66,7 +66,7 @@ export default function OverviewPage() {
         icon="overview"
         hue="var(--cb-hue-overview)"
         title={server.name}
-        subtitle={<span className="row"><BotStatus state={bot} /> <span>{t(server.role === "owner" ? "ov.owner" : "ov.manager")}</span></span>}
+        subtitle={<span className="row"><BotStatus state={bot} /> <span>{t(server.role === "owner" ? "ov.owner" : server.role === "panel" ? "ov.panelAdmin" : "ov.manager")}</span></span>}
         actions={<Button icon="external" onClick={() => void openInvite(serverId)}>{t("ov.inviteLink")}</Button>}
       />
       <div className="stats overview-stats">

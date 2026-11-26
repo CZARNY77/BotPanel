@@ -1,5 +1,5 @@
 import { request } from "../http";
-import type { AdminLogEntry, LogSource } from "../types";
+import type { AdminLogEntry, AdminServer, ApiAdminServer, LogSource } from "../types";
 
 /** K17: limit 1–200, offset >= 0. */
 export async function getAdminLogs(params: {
@@ -38,4 +38,19 @@ export async function removeAdminUser(userId: string): Promise<string[]> {
     method: "DELETE",
   });
   return data.users ?? [];
+}
+
+const toAdminServer = (raw: ApiAdminServer): AdminServer => ({
+  id: String(raw.id),
+  name: raw.name,
+  iconUrl: raw.icon_url,
+  memberCount: raw.member_count,
+  ownerId: raw.owner_id,
+});
+
+/** Every server the bot is on (panel admins only, 403 otherwise). */
+export async function getAdminServers(): Promise<{ servers: AdminServer[]; total: number }> {
+  const data = await request<{ servers: ApiAdminServer[]; total: number }>("/api/admin/servers");
+  const servers = (data.servers ?? []).map(toAdminServer);
+  return { servers, total: data.total ?? servers.length };
 }

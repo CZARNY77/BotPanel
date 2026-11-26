@@ -44,6 +44,9 @@
   --cb-red: #f87171;
   --cb-yellow: #facc15;
   --cb-slate: #a1a1aa;
+  --cb-admin: #fb923c;            /* panel admin on a server outside their own list */
+  --cb-admin-soft: rgb(251 146 60 / 0.14);
+  --cb-admin-line: rgb(251 146 60 / 0.35);
 
   /* type */
   --cb-font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
