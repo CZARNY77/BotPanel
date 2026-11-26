@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--cb-space-4);
-  height: var(--cb-topbar-h);
+  height: var(--cb-public-nav-h);
   padding: 0 var(--cb-space-6);
   position: sticky;
   top: 0;

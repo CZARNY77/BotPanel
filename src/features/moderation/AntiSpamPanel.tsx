@@ -3,11 +3,12 @@ import { ChannelSelect, Field, MultiSelectChips } from "../../components/form/fi
 import { Group, Toggle } from "../../components/ui/basics";
 import { Icon, type IconName } from "../../components/ui/Icon";
 import { useServerMeta } from "../../hooks/useServerMeta";
+import { useT, type MessageKey } from "../../i18n";
 
-const ACTIONS: { key: AntiSpamAction; label: string; icon: IconName; detail: string }[] = [
-  { key: "auto", label: "Smart", icon: "moderation", detail: "New members get banned, everyone else a 24 h timeout." },
-  { key: "timeout", label: "Timeout", icon: "timer", detail: "Everyone gets a 24 h timeout." },
-  { key: "delete", label: "Delete only", icon: "trash", detail: "Only the message is removed." },
+const ACTIONS: { key: AntiSpamAction; label: MessageKey; icon: IconName; detail: MessageKey }[] = [
+  { key: "auto", label: "spam.smart", icon: "moderation", detail: "spam.smartDetail" },
+  { key: "timeout", label: "spam.timeout", icon: "timer", detail: "spam.timeoutDetail" },
+  { key: "delete", label: "spam.delete", icon: "trash", detail: "spam.deleteDetail" },
 ];
 
 export const AntiSpamPanel = ({
@@ -17,38 +18,39 @@ export const AntiSpamPanel = ({
   value: AntiSpamSettings;
   set: (next: AntiSpamSettings) => void;
 }) => {
+  const { t } = useT();
   const { roles } = useServerMeta();
   const action = ACTIONS.find((a) => a.key === value.action) ?? ACTIONS[0];
   return (
     <Group
-      title="Anti-spam"
+      title={t("spam.title")}
       icon="spam"
-      description="Deletes messages with suspicious links. Server admins are never affected."
-      actions={<Toggle label="Anti-spam enabled" hideLabel checked={value.enabled} onChange={(enabled) => set({ ...value, enabled })} />}
+      description={t("spam.desc")}
+      actions={<Toggle label={t("spam.enabled")} hideLabel checked={value.enabled} onChange={(enabled) => set({ ...value, enabled })} />}
     >
       <fieldset className="stack stack--lg plain" disabled={!value.enabled}>
-        <Field label="What happens to the author">
-          <div className="segmented" role="group" aria-label="Action">
+        <Field label={t("spam.action")}>
+          <div className="segmented" role="group" aria-label={t("spam.actionLabel")}>
             {ACTIONS.map((a) => (
-              <button key={a.key} type="button" aria-pressed={value.action === a.key} onClick={() => set({ ...value, action: a.key })} title={a.detail}>
+              <button key={a.key} type="button" aria-pressed={value.action === a.key} onClick={() => set({ ...value, action: a.key })} title={t(a.detail)}>
                 <Icon name={a.icon} size="sm" />
-                {a.label}
+                {t(a.label)}
               </button>
             ))}
           </div>
-          <span className="field__hint">{action.detail}</span>
+          <span className="field__hint">{t(action.detail)}</span>
         </Field>
-        <Field label="Roles that are never punished">
+        <Field label={t("spam.exempt")}>
           <MultiSelectChips
-            ariaLabel="Add exempt role"
-            placeholder="Add a role…"
+            ariaLabel={t("spam.addExempt")}
+            placeholder={t("field.addRole")}
             values={value.exemptRoleIds}
             onChange={(exemptRoleIds) => set({ ...value, exemptRoleIds })}
             options={roles.map((r) => ({ value: r.id, label: r.name }))}
           />
         </Field>
-        <Field label="Report channel" hint="The bot posts who was punished and why">
-          <ChannelSelect value={value.logChannelId} onChange={(logChannelId) => set({ ...value, logChannelId })} emptyLabel="No reports" />
+        <Field label={t("spam.report")} hint={t("spam.reportHint")}>
+          <ChannelSelect value={value.logChannelId} onChange={(logChannelId) => set({ ...value, logChannelId })} emptyLabel={t("spam.noReports")} />
         </Field>
       </fieldset>
     </Group>

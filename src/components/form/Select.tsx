@@ -1,5 +1,6 @@
 // Searchable select (keyboard friendly). Base for ChannelSelect / RoleSelect / MultiSelectChips.
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useT } from "../../i18n";
 
 export type SelectOption = { value: string; label: string; disabled?: boolean };
 
@@ -22,7 +23,7 @@ export const Select = ({
   value,
   onChange,
   options,
-  placeholder = "Search…",
+  placeholder: placeholderProp,
   emptyLabel,
   ariaLabel,
   invalid,
@@ -30,6 +31,8 @@ export const Select = ({
   id,
   resetOnPick = false,
 }: SelectProps) => {
+  const { t } = useT();
+  const placeholder = placeholderProp ?? t("select.search");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const listId = useId();
   const [open, setOpen] = useState(false);
@@ -104,7 +107,7 @@ export const Select = ({
       />
       {open ? (
         <div className="popover" id={listId} role="listbox">
-          {filtered.length === 0 ? <div className="option-empty">No matches</div> : null}
+          {filtered.length === 0 ? <div className="option-empty">{t("select.noMatches")}</div> : null}
           {filtered.map((option, index) => (
             <button
               key={`${option.value}-${option.label}`}

@@ -5,6 +5,7 @@ import { useServerResource, useServerScope, type Resource } from "../../hooks/us
 import { AntiSpamPanel } from "./AntiSpamPanel";
 import { BanDmPanel, TimeoutDmPanel } from "./DmPanels";
 import { WarthogPanel } from "./WarthogPanel";
+import { useT } from "../../i18n";
 
 type ModuleApi<T> = { get: (id: string) => Promise<T>; update: (id: string, v: Partial<T>) => Promise<T> };
 
@@ -22,20 +23,21 @@ function Slot<T>({ resource, edit, children }: { resource: Resource<T>; edit: Ed
 }
 
 export default function ModerationPage() {
-  const antiSpam = useModule("anti-spam", antiSpamApi, "Anti-spam");
-  const timeoutDm = useModule("timeout-dm", timeoutDmApi, "Timeout DM", (v) =>
-    v.message.length > 1500 ? "The timeout message can have at most 1500 characters." : null
+  const { t } = useT();
+  const antiSpam = useModule("anti-spam", antiSpamApi, t("spam.title"));
+  const timeoutDm = useModule("timeout-dm", timeoutDmApi, t("dm.timeoutTitle"), (v) =>
+    v.message.length > 1500 ? t("mod.timeoutErr") : null
   );
-  const banDm = useModule("ban-dm", banDmApi, "Ban DM");
-  const warthog = useModule("warthog", warthogApi, "Warthog");
+  const banDm = useModule("ban-dm", banDmApi, t("mod.banDm"));
+  const warthog = useModule("warthog", warthogApi, t("mod.warthog"));
 
   return (
     <>
       <PageHeader
         icon="moderation"
         hue="var(--cb-hue-moderation)"
-        title="Moderation"
-        subtitle="Automatic protection and the private messages the bot sends to punished members."
+        title={t("section.moderation")}
+        subtitle={t("mod.subtitle")}
       />
       <div className="mod-grid">
         <Slot {...antiSpam}>{(v) => <AntiSpamPanel value={v} set={antiSpam.edit.set} />}</Slot>

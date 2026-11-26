@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { IconButton } from "./Button";
+import { useT } from "../../i18n";
 
 type ToastItem = { id: number; tone: "ok" | "err"; message: string };
 type ToastApi = { success: (message: string) => void; error: (message: string) => void };
@@ -10,6 +11,7 @@ const ToastContext = createContext<ToastApi | null>(null);
 let nextId = 1;
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
+  const { t } = useT();
   const [items, setItems] = useState<ToastItem[]>([]);
 
   const dismiss = useCallback((id: number) => setItems((prev) => prev.filter((item) => item.id !== id)), []);
@@ -36,7 +38,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
           <div key={item.id} className={`toast${item.tone === "err" ? " toast--err" : ""}`} role={item.tone === "err" ? "alert" : "status"}>
             <Icon name={item.tone === "err" ? "warning" : "check"} />
             <span className="grow">{item.message}</span>
-            <IconButton icon="close" label="Dismiss" onClick={() => dismiss(item.id)} />
+            <IconButton icon="close" label={t("action.dismiss")} onClick={() => dismiss(item.id)} />
           </div>
         ))}
       </div>

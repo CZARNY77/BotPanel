@@ -1,16 +1,17 @@
 // Classification of bot logs by message text (fragile; later: a `category` field in the bot's logs).
 import type { AdminLogEntry } from "../../api/types";
 import type { IconName } from "../../components/ui/Icon";
+import type { MessageKey } from "../../i18n";
 
 export type LogCategory = "all" | "house" | "guild" | "events" | "errors" | "other";
 
-export const categories: { key: LogCategory; label: string; icon: IconName }[] = [
-  { key: "all", label: "All", icon: "menu" },
-  { key: "house", label: "House joins", icon: "users" },
-  { key: "guild", label: "Bot joins", icon: "globe" },
-  { key: "events", label: "Events", icon: "events" },
-  { key: "errors", label: "Errors", icon: "warning" },
-  { key: "other", label: "Other", icon: "info" },
+export const categories: { key: LogCategory; label: MessageKey; icon: IconName }[] = [
+  { key: "all", label: "logs.cat.all", icon: "menu" },
+  { key: "house", label: "logs.cat.house", icon: "users" },
+  { key: "guild", label: "logs.cat.guild", icon: "globe" },
+  { key: "events", label: "logs.cat.events", icon: "events" },
+  { key: "errors", label: "logs.cat.errors", icon: "warning" },
+  { key: "other", label: "logs.cat.other", icon: "info" },
 ];
 
 const text = (value?: string | null) => (value ?? "").toLowerCase();

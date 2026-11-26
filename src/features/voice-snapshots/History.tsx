@@ -8,6 +8,7 @@ import { Icon } from "../../components/ui/Icon";
 import { errorText, useToast } from "../../components/ui/Toast";
 import type { Resource } from "../../hooks/useServerResource";
 import { useServerScope } from "../../hooks/useServerResource";
+import { localeOf, useT } from "../../i18n";
 
 export const PAGE = 20;
 
@@ -16,8 +17,8 @@ const short = (iso: string | null) => {
   const d = new Date(iso);
   return {
     day: String(d.getDate()),
-    month: d.toLocaleString("en-GB", { month: "short" }),
-    time: d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    month: d.toLocaleString(localeOf(), { month: "short" }),
+    time: d.toLocaleTimeString(localeOf(), { hour: "2-digit", minute: "2-digit" }),
   };
 };
 
@@ -28,6 +29,7 @@ const byChannel = (log: VoicePresenceLog) =>
   }));
 
 export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }) => {
+  const { t, tn } = useT();
   const { serverId } = useServerScope();
   const toast = useToast();
   const [open, setOpen] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
       resource.setData((prev) => [...(prev ?? []), ...next]);
       if (next.length < PAGE) setExhausted(true);
     } catch (err) {
-      toast.error(errorText(err, "Failed to load more snapshots."));
+      toast.error(errorText(err, t("voice.loadMoreFailed")));
     } finally {
       setMore(false);
     }
@@ -56,10 +58,10 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
     try {
       await deletePresenceLog(serverId, confirm.id);
       resource.setData((prev) => (prev ?? []).filter((log) => log.id !== confirm.id));
-      toast.success("Snapshot deleted.");
+      toast.success(t("voice.deleted"));
       setConfirm(null);
     } catch (err) {
-      toast.error(errorText(err, "Failed to delete snapshot."));
+      toast.error(errorText(err, t("voice.deleteFailed")));
     } finally {
       setBusy(false);
     }
@@ -67,9 +69,9 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
 
   return (
     <Group
-      title={<>History <span className="muted num">{logs.length}</span></>}
+      title={<>{t("voice.history")} <span className="muted num">{logs.length}</span></>}
       icon="history"
-      actions={<IconButton icon="refresh" label="Refresh" loading={resource.loading && logs.length > 0} onClick={() => void resource.reload()} />}
+      actions={<IconButton icon="refresh" label={t("action.refresh")} loading={resource.loading && logs.length > 0} onClick={() => void resource.reload()} />}
     >
       {resource.error ? <ErrorState message={resource.error} onRetry={() => void resource.reload()} /> : null}
       {resource.loading && !logs.length ? (
@@ -78,7 +80,7 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
           <Skeleton height={52} />
         </div>
       ) : logs.length === 0 ? (
-        <EmptyState icon="voice" title="No snapshots yet">Run one now or add a schedule.</EmptyState>
+        <EmptyState icon="voice" title={t("voice.noSnapshots")}>{t("voice.noSnapshotsHint")}</EmptyState>
       ) : (
         <div className="list">
           {logs.map((log) => {
@@ -92,21 +94,21 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
                     <span className="date-tile__month">{date.month}</span>
                   </div>
                   <div className="list-row__main">
-                    <span className="list-row__title truncate">{log.name || "Snapshot"}</span>
+                    <span className="list-row__title truncate">{log.name || t("voice.snapshot")}</span>
                     <span className="list-row__meta">
                       <span className="num">{date.time}</span>
-                      <Icon name={log.source === "schedule" ? "clock" : "play"} size="sm" title={log.source === "schedule" ? "Scheduled" : "Manual"} />
+                      <Icon name={log.source === "schedule" ? "clock" : "play"} size="sm" title={t(log.source === "schedule" ? "voice.scheduled" : "voice.manual")} />
                     </span>
                   </div>
-                  <div className="stat-inline" title="Members">
+                  <div className="stat-inline" title={t("stat.members")}>
                     <span className="stat-inline__value num">{log.totalMembers}</span>
                     <Icon name="users" size="sm" />
                   </div>
-                  <div className="stat-inline muted" title="Channels">
+                  <div className="stat-inline muted" title={t("stat.channels")}>
                     <span className="num">{log.totalChannels}</span>
                     <Icon name="voice" size="sm" />
                   </div>
-                  <IconButton icon="trash" variant="danger" label="Delete snapshot" onClick={(e) => { e.stopPropagation(); setConfirm(log); }} />
+                  <IconButton icon="trash" variant="danger" label={t("voice.deleteSnapshot")} onClick={(e) => { e.stopPropagation(); setConfirm(log); }} />
                 </div>
                 {expanded ? (
                   <div className="log-detail">
@@ -118,7 +120,7 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
                           <span className="muted num">{members.length}</span>
                         </div>
                         <div className="chips">
-                          {members.length ? members.map((m) => <Pill key={m.id}>{m.name}</Pill>) : <span className="muted small">Empty</span>}
+                          {members.length ? members.map((m) => <Pill key={m.id}>{m.name}</Pill>) : <span className="muted small">{t("voice.empty")}</span>}
                         </div>
                       </div>
                     ))}
@@ -129,16 +131,16 @@ export const History = ({ resource }: { resource: Resource<VoicePresenceLog[]> }
           })}
           {!exhausted && logs.length >= PAGE ? (
             <div style={{ paddingTop: 12 }}>
-              <Button size="sm" variant="ghost" loading={more} onClick={() => void loadMore()}>Load more</Button>
+              <Button size="sm" variant="ghost" loading={more} onClick={() => void loadMore()}>{t("action.loadMore")}</Button>
             </div>
           ) : null}
         </div>
       )}
       {confirm ? (
         <ConfirmDialog
-          title="Delete snapshot?"
-          message={`“${confirm.name || "Snapshot"}” with ${confirm.totalMembers} members will be removed for good.`}
-          confirmLabel="Delete"
+          title={t("voice.deleteTitle")}
+          message={tn("voice.deleteMessage", confirm.totalMembers, { name: confirm.name || t("voice.snapshot") })}
+          confirmLabel={t("action.delete")}
           danger
           busy={busy}
           onConfirm={() => void remove()}

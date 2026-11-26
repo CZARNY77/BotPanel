@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, Group, PageHeader, PageSkeleton, Tabs } from ".
 import { ConfirmDialog } from "../../components/ui/Dialog";
 import { errorText, useToast } from "../../components/ui/Toast";
 import { useServerResource, useServerScope } from "../../hooks/useServerResource";
+import { useT } from "../../i18n";
 import { EventDetail } from "./EventDetail";
 import { EventForm } from "./EventForm";
 import { EventList } from "./EventList";
@@ -18,6 +19,7 @@ type Panel = { kind: "detail"; id: string } | { kind: "new" } | { kind: "edit"; 
 
 export default function EventsPage() {
   const { serverId } = useServerScope();
+  const { t } = useT();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const [filter, setFilter] = useState<EventStatusFilter>("active");
@@ -59,20 +61,20 @@ export default function EventsPage() {
         const updated = await updateEvent(serverId, panel.id, input);
         events.setData((prev) => (prev ?? []).map((e) => (e.id === updated.id ? updated : e)));
         setPanel({ kind: "detail", id: updated.id });
-        toast.success("Event updated.");
+        toast.success(t("events.updated"));
       } else {
         const created = await createEvent(serverId, input);
         events.setData((prev) => [created, ...(prev ?? [])]);
         setPanel({ kind: "detail", id: created.id });
-        toast.success("Event created. The signup message is on Discord.");
+        toast.success(t("events.created"));
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        toast.error("This event has already finished, so it can no longer be edited.");
+        toast.error(t("events.conflict"));
         void events.reload();
         setPanel(panel?.kind === "edit" ? { kind: "detail", id: panel.id } : null);
       } else {
-        toast.error(errorText(err, "Failed to save the event."));
+        toast.error(errorText(err, t("events.saveFailed")));
       }
     } finally {
       setSaving(false);
@@ -87,9 +89,9 @@ export default function EventsPage() {
       events.setData((prev) => (prev ?? []).filter((e) => e.id !== id));
       setPanel(null);
       setConfirm(null);
-      toast.success("Event deleted.");
+      toast.success(t("events.deleted"));
     } catch (err) {
-      toast.error(errorText(err, "Failed to delete the event."));
+      toast.error(errorText(err, t("events.deleteFailed")));
     } finally {
       setDeleting(false);
     }
@@ -100,9 +102,9 @@ export default function EventsPage() {
       <PageHeader
         icon="events"
         hue="var(--cb-hue-events)"
-        title="Events"
-        subtitle="Members answer Going, Maybe or Not going under the bot's message. Repeating events start the next one when they end."
-        actions={<Button variant="primary" icon="plus" loading={!canCreate} onClick={() => setPanel({ kind: "new" })}>New event</Button>}
+        title={t("section.events")}
+        subtitle={t("events.subtitle")}
+        actions={<Button variant="primary" icon="plus" loading={!canCreate} onClick={() => setPanel({ kind: "new" })}>{t("events.new")}</Button>}
       />
       {events.error ? <ErrorState message={events.error} onRetry={() => void events.reload()} /> : null}
       {events.loading && !events.data ? (
@@ -112,18 +114,18 @@ export default function EventsPage() {
           <Group
             title={
               <Tabs
-                label="Event status"
+                label={t("events.status")}
                 value={filter}
                 onChange={setFilter}
                 tabs={[
-                  { key: "active", label: "Upcoming", count: filter === "active" ? all.length : undefined },
-                  { key: "all", label: "All", count: filter === "all" ? all.length : undefined },
+                  { key: "active", label: t("events.upcoming"), count: filter === "active" ? all.length : undefined },
+                  { key: "all", label: t("events.all"), count: filter === "all" ? all.length : undefined },
                 ]}
               />
             }
           >
             {list.length === 0 ? (
-              <EmptyState icon="events" title={filter === "active" ? "No upcoming events" : "No events yet"} action={<Button icon="plus" disabled={!canCreate} onClick={() => setPanel({ kind: "new" })}>New event</Button>} />
+              <EmptyState icon="events" title={t(filter === "active" ? "events.noneUpcoming" : "events.none")} action={<Button icon="plus" disabled={!canCreate} onClick={() => setPanel({ kind: "new" })}>{t("events.new")}</Button>} />
             ) : (
               <EventList events={list} selectedId={shown && shown.kind !== "new" ? shown.id : null} onSelect={(id) => setPanel({ kind: "detail", id })} />
             )}
@@ -152,9 +154,9 @@ export default function EventsPage() {
       )}
       {confirm ? (
         <ConfirmDialog
-          title="Delete event?"
-          message={`“${confirm.title}” and its signups will be removed. Repeats stop too.`}
-          confirmLabel="Delete"
+          title={t("events.deleteTitle")}
+          message={t("events.deleteMessage", { title: confirm.title })}
+          confirmLabel={t("action.delete")}
           danger
           busy={deleting}
           onConfirm={() => void remove()}

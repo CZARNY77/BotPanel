@@ -4,6 +4,7 @@ import logo from "../../assets/logo.png";
 import { useServerMeta } from "../../hooks/useServerMeta";
 import { EmojiView } from "../form/EmojiPicker";
 import { Icon } from "../ui/Icon";
+import { useT } from "../../i18n";
 
 export type PreviewEmbed = { title: string; description: string; color: string; showAvatar?: boolean };
 
@@ -12,17 +13,18 @@ type Vars = { user?: string; server?: string };
 const TOKEN = /(<@&\d+>|\{user\}|\{server\}|\{minutes\}|\{seconds\}|<a?:[\w~-]+:\d+>|\*\*[^*]+\*\*|\*[^*]+\*)/g;
 
 const useRich = (vars: Vars) => {
+  const { t } = useT();
   const { roleName } = useServerMeta();
   return (text: string): ReactNode[] =>
     text.split(TOKEN).map((part, index) => {
       if (!part) return null;
-      if (part === "{user}") return <span key={index} className="dc__mention">@{vars.user ?? "new-member"}</span>;
-      if (part === "{server}") return <strong key={index}>{vars.server ?? "Server"}</strong>;
+      if (part === "{user}") return <span key={index} className="dc__mention">@{vars.user ?? t("preview.newMember")}</span>;
+      if (part === "{server}") return <strong key={index}>{vars.server ?? t("preview.server")}</strong>;
       if (part === "{minutes}") return <strong key={index}>10</strong>;
       if (part === "{seconds}") return <strong key={index}>600</strong>;
       const role = part.match(/^<@&(\d+)>$/);
       if (role) {
-        const name = roleName.get(role[1]) ?? "@unknown-role";
+        const name = roleName.get(role[1]) ?? t("preview.unknownRole");
         return <span key={index} className="dc__mention">{name.startsWith("@") ? name : `@${name}`}</span>;
       }
       if (/^<a?:[\w~-]+:\d+>$/.test(part)) return <EmojiView key={index} token={part} size={20} />;
@@ -39,7 +41,7 @@ export const MessagePreview = ({
   vars = {},
   avatarUrl,
   reactions,
-  label = "Preview",
+  label,
   image,
 }: {
   type: "text" | "embed";
@@ -51,15 +53,16 @@ export const MessagePreview = ({
   label?: string;
   image?: string;
 }) => {
+  const { t, locale } = useT();
   const rich = useRich(vars);
-  const time = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const time = new Date().toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   return (
     <div>
       <div className="dc__label">
         <Icon name="eye" size="sm" />
-        {label}
+        {label ?? t("preview.label")}
       </div>
-      <div className="dc" aria-label="Discord message preview">
+      <div className="dc" aria-label={t("preview.aria")}>
         <div className="dc__msg">
           <div className="dc__avatar">
             <img src={logo} alt="" />
@@ -68,10 +71,10 @@ export const MessagePreview = ({
             <div className="dc__head">
               <span className="dc__name">ConqBot</span>
               <span className="dc__tag">APP</span>
-              <span className="dc__time">Today at {time}</span>
+              <span className="dc__time">{t("preview.today", { time })}</span>
             </div>
             {type === "text" ? (
-              <div className="dc__text">{text.trim() ? rich(text) : <span className="dc__time">Empty message</span>}</div>
+              <div className="dc__text">{text.trim() ? rich(text) : <span className="dc__time">{t("preview.empty")}</span>}</div>
             ) : (
               <div className="dc__embed" style={{ "--embed": embed?.color || "#5865f2" } as CSSProperties}>
                 <div className="grow">

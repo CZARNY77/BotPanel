@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "../api/types";
+import { translate } from "../i18n";
 import { authUrl, getMe, logout } from "../api/endpoints/auth";
 import { USE_MOCKS } from "../api/http";
 
@@ -26,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = await getMe();
       setUser(currentUser);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : translate("error.unknown"));
       setUser(null);
     } finally {
       setLoading(false);
@@ -55,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await logout();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : translate("error.unknown"));
     } finally {
       setUser(null);
       setLoading(false);

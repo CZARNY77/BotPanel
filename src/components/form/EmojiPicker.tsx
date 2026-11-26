@@ -4,6 +4,7 @@ import defaultEmojisRaw from "../../data/default-emojis.json";
 import type { EmojiOption } from "../../api/types";
 import { useServerEmojis } from "../../hooks/useServerMeta";
 import { Icon } from "../ui/Icon";
+import { useT } from "../../i18n";
 
 const defaultEmojis = defaultEmojisRaw as EmojiOption[];
 
@@ -38,7 +39,7 @@ export const EmojiView = ({ token, size = 20 }: { token: string; size?: number }
 
 export const EmojiPicker = ({
   onPick,
-  label = "Insert emoji",
+  label: labelProp,
   value,
   invalid,
 }: {
@@ -48,6 +49,8 @@ export const EmojiPicker = ({
   value?: string;
   invalid?: boolean;
 }) => {
+  const { t } = useT();
+  const label = labelProp ?? t("emoji.insert");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement | null>(null);
@@ -87,7 +90,7 @@ export const EmojiPicker = ({
           type="button"
           className={`btn btn-secondary emoji-slot${invalid ? " emoji-slot--invalid" : ""}`}
           onClick={() => setOpen((v) => !v)}
-          aria-label={value ? `Emoji ${value}. Change` : label}
+          aria-label={value ? t("emoji.change", { value }) : label}
           title={label}
         >
           {value ? <EmojiView token={value} /> : <Icon name="emoji" />}
@@ -102,14 +105,14 @@ export const EmojiPicker = ({
           <input
             autoFocus
             className="input"
-            placeholder="Search emoji…"
+            placeholder={t("emoji.search")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            aria-label="Search emoji"
+            aria-label={t("emoji.searchLabel")}
           />
           {server.length ? (
             <>
-              <div className="palette__group">This server</div>
+              <div className="palette__group">{t("emoji.thisServer")}</div>
               <div className="emoji-grid">
                 {server.map((emoji) => (
                   <button key={emoji.id} type="button" className="option" title={`:${emoji.name}:`} onClick={() => pick(emoji)}>
@@ -119,7 +122,7 @@ export const EmojiPicker = ({
               </div>
             </>
           ) : null}
-          <div className="palette__group">Standard</div>
+          <div className="palette__group">{t("emoji.standard")}</div>
           <div className="emoji-grid">
             {standard.map((emoji) => (
               <button key={emoji.id} type="button" className="option" title={emoji.name} onClick={() => pick(emoji)}>
@@ -127,7 +130,7 @@ export const EmojiPicker = ({
               </button>
             ))}
           </div>
-          {!server.length && !standard.length ? <div className="option-empty">No emoji found.</div> : null}
+          {!server.length && !standard.length ? <div className="option-empty">{t("emoji.none")}</div> : null}
         </div>
       ) : null}
     </div>

@@ -114,7 +114,7 @@
 .toasts {
   position: fixed;
   right: var(--cb-space-4);
-  top: calc(var(--cb-topbar-h) + var(--cb-space-3));
+  top: var(--cb-space-3);
   z-index: 80;
   display: flex;
   flex-direction: column;
@@ -182,101 +182,10 @@
 /* Unsaved bar centred over the content, not the whole window. */
 @media (min-width: 861px) {
   .shell .unsaved {
-    left: calc(50% + var(--cb-sidebar-w) / 2);
+    left: calc(50% + (var(--cb-rail-w) + var(--cb-sidebar-w)) / 2);
   }
 
   .shell--collapsed .unsaved {
-    left: calc(50% + var(--cb-sidebar-w-collapsed) / 2);
+    left: calc(50% + (var(--cb-rail-w) + var(--cb-sidebar-w-collapsed)) / 2);
   }
-}
-
-/* ---------- server switcher (top bar; mobile rules in shell.css) */
-.switcher {
-  position: relative;
-}
-
-.switcher__button {
-  display: flex;
-  align-items: center;
-  gap: var(--cb-space-2);
-  height: 38px;
-  max-width: 320px;
-  padding: 0 var(--cb-space-2);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--cb-radius-control);
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.switcher__button:hover,
-.switcher__button[aria-expanded="true"] {
-  background: var(--cb-hover);
-  border-color: var(--cb-border);
-}
-
-.switcher__menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 300px;
-  max-height: 70vh;
-  overflow: auto;
-  padding: var(--cb-space-1);
-  background: var(--cb-surface);
-  border: 1px solid var(--cb-border-strong);
-  border-radius: var(--cb-radius-panel);
-  box-shadow: var(--cb-shadow);
-}
-
-.switcher__group {
-  padding: var(--cb-space-2) var(--cb-space-2) var(--cb-space-1);
-  font-size: var(--cb-fs-xs);
-  color: var(--cb-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.switcher__item {
-  display: flex;
-  align-items: center;
-  gap: var(--cb-space-2);
-  width: 100%;
-  min-height: 40px;
-  padding: var(--cb-space-1) var(--cb-space-2);
-  background: none;
-  border: 0;
-  border-radius: var(--cb-radius-control);
-  text-align: left;
-  cursor: pointer;
-}
-
-.switcher__item:hover,
-.switcher__item.active {
-  background: var(--cb-hover);
-}
-
-.server-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  overflow: hidden;
-  background: var(--cb-primary-soft);
-  color: var(--cb-primary);
-  font-weight: 700;
-  font-size: var(--cb-fs-xs);
-}
-
-.server-icon--off {
-  background: var(--cb-hover);
-  color: var(--cb-text-muted);
-}
-
-.server-icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }

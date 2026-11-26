@@ -1,5 +1,6 @@
 import type { EventInput, EventItem } from "../../api/types";
 export { dateParts } from "../../components/ui/DateTile";
+import { translate, translatePlural } from "../../i18n";
 
 export type EventForm = {
   title: string;
@@ -51,14 +52,14 @@ export const formFromEvent = (event: EventItem): EventForm => ({
 
 /** Same rules as before the rebuild; returns the API body or an error message. */
 export const toInput = (form: EventForm): EventInput | string => {
-  if (!form.title.trim()) return "Event title is required.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return "Pick a valid date.";
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(form.time)) return "Time must be in 24h format (HH:MM).";
-  if (!form.channelId) return "Select a channel for the event.";
+  if (!form.title.trim()) return translate("events.err.title");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) return translate("events.err.date");
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(form.time)) return translate("events.err.time");
+  if (!form.channelId) return translate("events.err.channel");
   const hours = Number.parseFloat(form.durationHours);
-  if (!Number.isFinite(hours) || hours <= 0) return "Duration must be a positive number of hours.";
+  if (!Number.isFinite(hours) || hours <= 0) return translate("events.err.duration");
   const interval = Number.parseInt(form.intervalDays, 10);
-  if (!Number.isFinite(interval) || interval < 0) return "Repeat interval must be zero or a positive number.";
+  if (!Number.isFinite(interval) || interval < 0) return translate("events.err.interval");
   return {
     title: form.title.trim(),
     description: form.description,
@@ -72,8 +73,16 @@ export const toInput = (form: EventForm): EventInput | string => {
   };
 };
 
-export const repeatLabel = (days: number) =>
-  days <= 0 ? "One-time" : days === 1 ? "Daily" : days === 7 ? "Weekly" : days === 14 ? "Every 2 weeks" : `Every ${days} days`;
+export const repeatLabel = (days: number, short = false) =>
+  days <= 0
+    ? translate("repeat.once")
+    : days === 1
+    ? translate("repeat.daily")
+    : days === 7
+    ? translate("repeat.weekly")
+    : days === 14
+    ? translate(short ? "repeat.twoWeeksShort" : "repeat.twoWeeks")
+    : translatePlural("repeat.every", days);
 
 export const durationLabel = (minutes: number) =>
   minutes % 60 === 0 ? `${minutes / 60} h` : minutes > 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;

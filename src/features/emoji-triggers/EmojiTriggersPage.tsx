@@ -10,6 +10,7 @@ import { Icon } from "../../components/ui/Icon";
 import { errorText, useToast } from "../../components/ui/Toast";
 import { useEditable } from "../../hooks/useEditable";
 import { useServerResource, useServerScope } from "../../hooks/useServerResource";
+import { useT } from "../../i18n";
 
 const MAX_UPLOADS = 10;
 const isUpload = (url: string) => url.includes("/api/uploads/") || url.includes("placehold.co/480x270");
@@ -17,6 +18,7 @@ const countUploads = (value: EmojiTriggerSettings) =>
   value.triggers.reduce((sum, t) => sum + t.imageUrls.filter(isUpload).length, 0);
 
 export default function EmojiTriggersPage() {
+  const { t: tr } = useT();
   const { serverId } = useServerScope();
   const toast = useToast();
   const resource = useServerResource("emoji-triggers", getEmojiTriggers);
@@ -26,20 +28,20 @@ export default function EmojiTriggersPage() {
   const uploadTarget = useRef<{ trigger: number; image: number } | null>(null);
 
   const edit = useEditable(resource, {
-    label: "Emoji triggers",
+    label: tr("emojiTr.label"),
     save: (value) =>
       updateEmojiTriggers(serverId, {
         requireExact: value.requireExact,
         triggers: value.triggers.map((t) => ({ emoji: t.emoji, imageUrls: t.imageUrls.map((u) => u.trim()) })),
       }),
     validate: (value) => {
-      if (uploading > 0) return "Wait for uploads to finish before saving.";
-      if (countUploads(value) > MAX_UPLOADS) return `Upload limit is ${MAX_UPLOADS} images. Use links for the rest.`;
-      if (value.triggers.some((t) => !t.emoji.trim())) return "Every emoji trigger needs an emoji.";
-      if (value.triggers.some((t) => t.imageUrls.length === 0)) return "Each emoji trigger needs at least one image.";
-      if (value.triggers.some((t) => t.imageUrls.some((u) => !u.trim()))) return "Fill in or remove empty image rows.";
+      if (uploading > 0) return tr("emojiTr.err.uploading");
+      if (countUploads(value) > MAX_UPLOADS) return tr("emojiTr.err.limit", { max: MAX_UPLOADS });
+      if (value.triggers.some((t) => !t.emoji.trim())) return tr("emojiTr.err.emoji");
+      if (value.triggers.some((t) => t.imageUrls.length === 0)) return tr("emojiTr.err.image");
+      if (value.triggers.some((t) => t.imageUrls.some((u) => !u.trim()))) return tr("emojiTr.err.emptyRow");
       if (value.triggers.some((t) => t.imageUrls.some((u) => !/^https?:\/\//.test(u.trim())))) {
-        return "Every image URL must start with http:// or https://.";
+        return tr("emojiTr.err.url");
       }
       return null;
     },
@@ -66,7 +68,7 @@ export default function EmojiTriggersPage() {
   const startUpload = (image: number) => {
     if (!value || !trigger) return;
     if (!isUpload(trigger.imageUrls[image] ?? "") && countUploads(value) >= MAX_UPLOADS) {
-      toast.error(`Upload limit reached (${MAX_UPLOADS}). Use a link instead.`);
+      toast.error(tr("emojiTr.limitReached", { max: MAX_UPLOADS }));
       return;
     }
     uploadTarget.current = { trigger: index, image };
@@ -86,7 +88,7 @@ export default function EmojiTriggersPage() {
         ),
       }));
     } catch (err) {
-      toast.error(errorText(err, "Failed to upload image."));
+      toast.error(errorText(err, tr("emojiTr.uploadFailed")));
     } finally {
       setUploading((n) => n - 1);
       if (fileRef.current) fileRef.current.value = "";
@@ -98,12 +100,12 @@ export default function EmojiTriggersPage() {
       <PageHeader
         icon="emoji"
         hue="var(--cb-hue-emoji)"
-        title="Emoji triggers"
-        subtitle="When a message contains the emoji, the bot replies with one of its images at random."
+        title={tr("section.emoji-triggers")}
+        subtitle={tr("emojiTr.subtitle")}
         actions={
           value ? (
             <Toggle
-              label="Exact match only"
+              label={tr("emojiTr.exact")}
               checked={value.requireExact}
               onChange={(requireExact) => edit.set({ ...value, requireExact })}
             />
@@ -116,12 +118,12 @@ export default function EmojiTriggersPage() {
       ) : (
         <div className="split split--list">
           <Group
-            title={<>Triggers <span className="muted num">{value.triggers.length}</span></>}
-            actions={<Button size="sm" icon="plus" onClick={addTrigger}>Add</Button>}
-            description={<>Uploads <span className="num">{countUploads(value)}/{MAX_UPLOADS}</span> · links have no limit</>}
+            title={<>{tr("emojiTr.triggers")} <span className="muted num">{value.triggers.length}</span></>}
+            actions={<Button size="sm" icon="plus" onClick={addTrigger}>{tr("action.add")}</Button>}
+            description={<>{tr("emojiTr.uploads")} <span className="num">{countUploads(value)}/{MAX_UPLOADS}</span> · {tr("emojiTr.linksNoLimit")}</>}
           >
             {value.triggers.length === 0 ? (
-              <EmptyState icon="emoji" title="No triggers yet" action={<Button variant="primary" icon="plus" onClick={addTrigger}>Add trigger</Button>} />
+              <EmptyState icon="emoji" title={tr("emojiTr.none")} action={<Button variant="primary" icon="plus" onClick={addTrigger}>{tr("emojiTr.addTrigger")}</Button>} />
             ) : (
               <div className="list">
                 {value.triggers.map((t, i) => (
@@ -135,7 +137,7 @@ export default function EmojiTriggersPage() {
                   >
                     <span className="emoji-token">{t.emoji ? <EmojiView token={t.emoji} size={24} /> : <Icon name="warning" />}</span>
                     <div className="list-row__main">
-                      <span className="list-row__title">{!t.emoji ? "Pick an emoji" : t.emoji.startsWith("<") ? t.emoji.replace(/<a?:([\w~-]+):\d+>/, ":$1:") : "Standard emoji"}</span>
+                      <span className="list-row__title">{!t.emoji ? tr("emojiTr.pickEmoji") : t.emoji.startsWith("<") ? t.emoji.replace(/<a?:([\w~-]+):\d+>/, ":$1:") : tr("emojiTr.standardEmoji")}</span>
                       <span className="list-row__meta">
                         <Icon name="image" size="sm" /> {t.imageUrls.filter(Boolean).length}
                       </span>
@@ -153,29 +155,29 @@ export default function EmojiTriggersPage() {
 
           {trigger ? (
             <Group
-              title="Trigger"
-              actions={<IconButton icon="trash" variant="danger" label="Remove trigger" onClick={() => removeTrigger(index)} />}
+              title={tr("emojiTr.trigger")}
+              actions={<IconButton icon="trash" variant="danger" label={tr("emojiTr.removeTrigger")} onClick={() => removeTrigger(index)} />}
             >
               <div className="stack stack--lg">
                 <div className="row">
-                  <EmojiPicker value={trigger.emoji} invalid={!trigger.emoji} label="Pick the trigger emoji" onPick={(emoji) => updateTrigger(index, { ...trigger, emoji })} />
-                  <span className="muted small">The emoji that starts the reply</span>
+                  <EmojiPicker value={trigger.emoji} invalid={!trigger.emoji} label={tr("emojiTr.pickTrigger")} onPick={(emoji) => updateTrigger(index, { ...trigger, emoji })} />
+                  <span className="muted small">{tr("emojiTr.triggerHint")}</span>
                 </div>
                 <div className="stack">
                   {trigger.imageUrls.map((url, i) => (
                     <div key={i} className="image-row">
                       <div className="image-row__thumb">{/^https?:\/\//.test(url) ? <img src={url} alt="" /> : <Icon name="image" />}</div>
                       <TextInput
-                        aria-label={`Image ${i + 1} URL`}
+                        aria-label={tr("emojiTr.imageUrl", { n: i + 1 })}
                         placeholder="https://…"
                         value={url}
                         aria-invalid={Boolean(url) && !/^https?:\/\//.test(url)}
                         onChange={(next) => updateTrigger(index, { ...trigger, imageUrls: trigger.imageUrls.map((u, j) => (j === i ? next : u)) })}
                       />
-                      <IconButton icon="upload" label="Upload image" loading={uploading > 0 && uploadTarget.current?.image === i} onClick={() => startUpload(i)} />
+                      <IconButton icon="upload" label={tr("emojiTr.upload")} loading={uploading > 0 && uploadTarget.current?.image === i} onClick={() => startUpload(i)} />
                       <IconButton
                         icon="close"
-                        label="Remove image"
+                        label={tr("emojiTr.removeImage")}
                         onClick={() => {
                           const rest = trigger.imageUrls.filter((_, j) => j !== i);
                           updateTrigger(index, { ...trigger, imageUrls: rest.length ? rest : [""] });
@@ -185,7 +187,7 @@ export default function EmojiTriggersPage() {
                   ))}
                   <div>
                     <Button size="sm" variant="ghost" icon="plus" onClick={() => updateTrigger(index, { ...trigger, imageUrls: [...trigger.imageUrls, ""] })}>
-                      Add image
+                      {tr("emojiTr.addImage")}
                     </Button>
                   </div>
                 </div>

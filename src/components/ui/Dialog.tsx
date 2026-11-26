@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Button, IconButton } from "./Button";
+import { useT } from "../../i18n";
 
 export const Dialog = ({
   title,
@@ -14,6 +15,7 @@ export const Dialog = ({
   footer?: ReactNode;
   wide?: boolean;
 }) => {
+  const { t } = useT();
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export const Dialog = ({
       >
         <div className="row row--between">
           <h2>{title}</h2>
-          <IconButton icon="close" label="Close" onClick={onClose} />
+          <IconButton icon="close" label={t("action.close")} onClick={onClose} />
         </div>
         {children}
         {footer ? <div className="dialog__foot">{footer}</div> : null}
@@ -66,14 +68,16 @@ export const ConfirmDialog = ({
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-}) => (
+}) => {
+  const { t } = useT();
+  return (
   <Dialog
     title={title}
     onClose={onCancel}
     footer={
       <>
         <Button variant="ghost" onClick={onCancel}>
-          Cancel
+          {t("action.cancel")}
         </Button>
         <Button variant={danger ? "danger" : "primary"} loading={busy} onClick={onConfirm}>
           {confirmLabel}
@@ -83,4 +87,5 @@ export const ConfirmDialog = ({
   >
     <div className="muted">{message}</div>
   </Dialog>
-);
+  );
+};

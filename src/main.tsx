@@ -5,12 +5,14 @@ import App from "./App";
 import { AuthProvider } from "./auth/AuthContext";
 import { sendClientLog } from "./api/endpoints/auth";
 import { ToastProvider } from "./components/ui/Toast";
+import { LangProvider } from "./i18n";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/components.css";
 import "./styles/forms.css";
 import "./styles/layout.css";
 import "./styles/overlays.css";
+import "./styles/rail.css";
 import "./styles/shell.css";
 import "./styles/features.css";
 import "./styles/sections.css";
@@ -44,12 +46,14 @@ window.addEventListener("unhandledrejection", (event) => {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
+    <LangProvider>
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </LangProvider>
   </React.StrictMode>
 );

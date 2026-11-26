@@ -2,6 +2,7 @@
 import { forwardRef, useId, type ReactNode } from "react";
 import { useServerMeta } from "../../hooks/useServerMeta";
 import { Icon } from "../ui/Icon";
+import { localeOf, useT } from "../../i18n";
 import { Select, type SelectOption } from "./Select";
 
 export const Field = ({
@@ -34,7 +35,7 @@ export const ChannelSelect = ({
   voice = false,
   emptyLabel,
   invalid,
-  ariaLabel = "Channel",
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -43,20 +44,21 @@ export const ChannelSelect = ({
   invalid?: boolean;
   ariaLabel?: string;
 }) => {
+  const { t } = useT();
   const meta = useServerMeta();
   const list = voice ? meta.voiceChannels : meta.channels;
   const options = list.map((c) => ({ value: c.id, label: c.name }));
   // Keep an unknown saved id visible instead of showing an empty field.
-  if (value && !list.some((c) => c.id === value)) options.unshift({ value, label: `Unknown channel (${value})` });
+  if (value && !list.some((c) => c.id === value)) options.unshift({ value, label: t("field.unknownChannel", { id: value }) });
   return (
     <Select
       value={value}
       onChange={onChange}
       options={options}
-      placeholder={meta.loading ? "Loading channels…" : voice ? "Pick a voice channel" : "Pick a channel"}
+      placeholder={t(meta.loading ? "field.loadingChannels" : voice ? "field.pickVoice" : "field.pickChannel")}
       emptyLabel={emptyLabel}
       invalid={invalid}
-      ariaLabel={ariaLabel}
+      ariaLabel={ariaLabel ?? t("field.channel")}
     />
   );
 };
@@ -66,7 +68,7 @@ export const RoleSelect = ({
   onChange,
   emptyLabel,
   invalid,
-  ariaLabel = "Role",
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -74,18 +76,19 @@ export const RoleSelect = ({
   invalid?: boolean;
   ariaLabel?: string;
 }) => {
+  const { t } = useT();
   const meta = useServerMeta();
   const options = meta.roles.map((r) => ({ value: r.id, label: r.name }));
-  if (value && !meta.roles.some((r) => r.id === value)) options.unshift({ value, label: `Unknown role (${value})` });
+  if (value && !meta.roles.some((r) => r.id === value)) options.unshift({ value, label: t("field.unknownRole", { id: value }) });
   return (
     <Select
       value={value}
       onChange={onChange}
       options={options}
-      placeholder={meta.loading ? "Loading roles…" : "Pick a role"}
+      placeholder={t(meta.loading ? "field.loadingRoles" : "field.pickRole")}
       emptyLabel={emptyLabel}
       invalid={invalid}
-      ariaLabel={ariaLabel}
+      ariaLabel={ariaLabel ?? t("field.role")}
     />
   );
 };
@@ -95,7 +98,7 @@ export const MultiSelectChips = ({
   values,
   onChange,
   options,
-  placeholder = "Add…",
+  placeholder,
   ariaLabel,
 }: {
   values: string[];
@@ -104,6 +107,7 @@ export const MultiSelectChips = ({
   placeholder?: string;
   ariaLabel: string;
 }) => {
+  const { t } = useT();
   const labelOf = new Map(options.map((o) => [o.value, o.label]));
   const available = options.filter((o) => !values.includes(o.value));
   return (
@@ -113,7 +117,7 @@ export const MultiSelectChips = ({
           {values.map((value) => (
             <span key={value} className="chip">
               {labelOf.get(value) ?? value}
-              <button type="button" aria-label={`Remove ${labelOf.get(value) ?? value}`} onClick={() => onChange(values.filter((v) => v !== value))}>
+              <button type="button" aria-label={t("field.remove", { name: labelOf.get(value) ?? value })} onClick={() => onChange(values.filter((v) => v !== value))}>
                 <Icon name="close" size="sm" />
               </button>
             </span>
@@ -125,7 +129,7 @@ export const MultiSelectChips = ({
         resetOnPick
         onChange={(value) => value && onChange([...values, value])}
         options={available}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("field.add")}
         ariaLabel={ariaLabel}
       />
     </div>
@@ -161,24 +165,31 @@ export const ColorInput = ({ value, onChange, label }: { value: string; onChange
   </div>
 );
 
-export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-export const DAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// 0 = Monday, like the bot. 1 Jan 2024 was a Monday.
+const dayName = (index: number, weekday: "long" | "short") =>
+  new Date(2024, 0, 1 + index).toLocaleDateString(localeOf(), { weekday });
+export const dayLong = (index: number) => dayName(index, "long");
+export const dayShort = (index: number) => dayName(index, "short");
+const WEEK = [0, 1, 2, 3, 4, 5, 6];
 
 /** Weekday picker as a row of buttons (0 = Monday, like the bot). */
-export const DaySelect = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => (
-  <div className="day-select" role="radiogroup" aria-label="Day of week">
-    {DAYS_SHORT.map((day, index) => (
+export const DaySelect = ({ value, onChange }: { value: number; onChange: (v: number) => void }) => {
+  const { t } = useT();
+  return (
+  <div className="day-select" role="radiogroup" aria-label={t("field.dayOfWeek")}>
+    {WEEK.map((index) => (
       <button
-        key={day}
+        key={index}
         type="button"
         role="radio"
         aria-checked={value === index}
-        title={DAYS[index]}
+        title={dayLong(index)}
         className={`day-select__day${value === index ? " active" : ""}`}
         onClick={() => onChange(index)}
       >
-        {day}
+        {dayShort(index)}
       </button>
     ))}
   </div>
-);
+  );
+};

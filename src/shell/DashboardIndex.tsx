@@ -4,15 +4,17 @@ import { EmptyState, LoadingScreen } from "../components/ui/basics";
 import { lastServer, useServers } from "../hooks/useServers";
 import { openInvite } from "../api/endpoints/servers";
 import { sectionPath } from "./sections";
+import { useT } from "../i18n";
 
 /** /dashboard: go to the last used server, else the first one with the bot. */
 export const DashboardIndex = () => {
+  const { t } = useT();
   const { servers, loading, error, reload } = useServers();
-  if (loading) return <LoadingScreen label="Loading your servers…" />;
+  if (loading) return <LoadingScreen label={t("servers.loading")} />;
   if (error) {
     return (
       <div className="content">
-        <EmptyState icon="warning" title="Could not load your servers." action={<Button icon="refresh" onClick={() => void reload()}>Retry</Button>}>
+        <EmptyState icon="warning" title={t("servers.error")} action={<Button icon="refresh" onClick={() => void reload()}>{t("action.retry")}</Button>}>
           {error}
         </EmptyState>
       </div>
@@ -27,10 +29,10 @@ export const DashboardIndex = () => {
       <EmptyState
         center
         icon="bot"
-        title="No servers to manage"
-        action={<Button variant="primary" icon="plus" onClick={() => void openInvite()}>Add ConqBot to a server</Button>}
+        title={t("servers.none")}
+        action={<Button variant="primary" icon="plus" onClick={() => void openInvite()}>{t("action.addConqBot")}</Button>}
       >
-        You need Administrator or Manage Server permission on a Discord server.
+        {t("servers.noneHint")}
       </EmptyState>
     </div>
   );

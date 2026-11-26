@@ -5,6 +5,7 @@ import { Button, IconButton } from "../../components/ui/Button";
 import { EmptyState, ErrorState, Group, Skeleton, Tabs } from "../../components/ui/basics";
 import { Icon, type IconName } from "../../components/ui/Icon";
 import { categories, filterLogs, type LogCategory } from "./logCategories";
+import { localeOf, useT } from "../../i18n";
 
 const LIMIT = 30;
 const LEVELS = ["all", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
@@ -21,11 +22,12 @@ const when = (iso?: string) => {
   if (!iso) return "–";
   const d = new Date(iso);
   const today = new Date().toDateString() === d.toDateString();
-  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  return today ? time : `${d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })} ${time}`;
+  const time = d.toLocaleTimeString(localeOf(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return today ? time : `${d.toLocaleDateString(localeOf(), { day: "2-digit", month: "2-digit" })} ${time}`;
 };
 
 export const LogsPanel = () => {
+  const { t } = useT();
   const [source, setSource] = useState<LogSource>("conqbot");
   const [level, setLevel] = useState("all");
   const [category, setCategory] = useState<LogCategory>("all");
@@ -44,12 +46,12 @@ export const LogsPanel = () => {
         setLogs((prev) => (reset ? next : [...prev, ...next]));
         setDone(next.length < LIMIT);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load logs.");
+        setError(err instanceof Error ? err.message : t("logs.loadFailed"));
       } finally {
         setLoading(false);
       }
     },
-    [source, level]
+    [source, level, t]
   );
 
   useEffect(() => {
@@ -63,31 +65,31 @@ export const LogsPanel = () => {
     <Group
       title={
         <Tabs
-          label="Log source"
+          label={t("logs.source")}
           value={source}
           onChange={setSource}
           tabs={[
-            { key: "conqbot", label: "Bot", icon: "bot" },
-            { key: "botpanel", label: "Panel", icon: "overview" },
+            { key: "conqbot", label: t("logs.bot"), icon: "bot" },
+            { key: "botpanel", label: t("logs.panel"), icon: "overview" },
           ]}
         />
       }
       actions={
         <>
-          <select className="select" style={{ width: 130 }} value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Level">
+          <select className="select" style={{ width: 130 }} value={level} onChange={(e) => setLevel(e.target.value)} aria-label={t("logs.level")}>
             {LEVELS.map((l) => (
-              <option key={l} value={l}>{l === "all" ? "All levels" : l}</option>
+              <option key={l} value={l}>{l === "all" ? t("logs.allLevels") : l}</option>
             ))}
           </select>
-          <IconButton icon="refresh" label="Refresh" loading={loading} onClick={() => void load(true, 0)} />
+          <IconButton icon="refresh" label={t("action.refresh")} loading={loading} onClick={() => void load(true, 0)} />
         </>
       }
     >
       {source === "conqbot" ? (
-        <div className="segmented" role="group" aria-label="Category" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+        <div className="segmented" role="group" aria-label={t("logs.category")} style={{ marginBottom: 12, flexWrap: "wrap" }}>
           {categories.map((c) => (
             <button key={c.key} type="button" aria-pressed={category === c.key} onClick={() => setCategory(c.key)}>
-              <Icon name={c.icon} size="sm" /> {c.label}
+              <Icon name={c.icon} size="sm" /> {t(c.label)}
             </button>
           ))}
         </div>
@@ -100,7 +102,7 @@ export const LogsPanel = () => {
           <Skeleton height={40} />
         </div>
       ) : shown.length === 0 && !error ? (
-        <EmptyState icon="console" title="No logs match these filters." />
+        <EmptyState icon="console" title={t("logs.none")} />
       ) : (
         <div className="list logs">
           {shown.map((log, index) => {
@@ -129,7 +131,7 @@ export const LogsPanel = () => {
       {!done && logs.length ? (
         <div style={{ paddingTop: 12 }}>
           <Button size="sm" variant="ghost" loading={loading} onClick={() => void load(false, logs.length)}>
-            Load more
+            {t("action.loadMore")}
           </Button>
         </div>
       ) : null}

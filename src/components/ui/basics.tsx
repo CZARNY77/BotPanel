@@ -2,6 +2,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
+import { useT } from "../../i18n";
 
 export const Toggle = ({
   checked,
@@ -39,12 +40,15 @@ export const Pill = ({ tone = "neutral", children, title }: { tone?: Tone; child
 );
 
 /** Status as a dot + short word (word kept for screen readers and clarity). */
-export const StatusPill = ({ on, onLabel = "On", offLabel = "Off" }: { on: boolean; onLabel?: string; offLabel?: string }) => (
-  <Pill tone={on ? "ok" : "neutral"}>
-    <span className="dot" aria-hidden="true" />
-    {on ? onLabel : offLabel}
-  </Pill>
-);
+export const StatusPill = ({ on, onLabel, offLabel }: { on: boolean; onLabel?: string; offLabel?: string }) => {
+  const { t } = useT();
+  return (
+    <Pill tone={on ? "ok" : "neutral"}>
+      <span className="dot" aria-hidden="true" />
+      {on ? onLabel ?? t("state.on") : offLabel ?? t("state.off")}
+    </Pill>
+  );
+};
 
 export const PageHeader = ({
   icon,
@@ -151,28 +155,33 @@ export const EmptyState = ({
   </div>
 );
 
-export const ErrorState = ({ message, onRetry }: { message: string; onRetry?: () => void }) => (
+export const ErrorState = ({ message, onRetry }: { message: string; onRetry?: () => void }) => {
+  const { t } = useT();
+  return (
   <div className="notice notice--err" role="alert">
     <Icon name="warning" />
     <div className="grow">
-      <strong>Could not load this section.</strong>
+      <strong>{t("state.loadError")}</strong>
       <p>{message}</p>
     </div>
     {onRetry ? (
       <Button size="sm" icon="refresh" onClick={onRetry}>
-        Retry
+        {t("action.retry")}
       </Button>
     ) : null}
   </div>
-);
+  );
+};
 
 export const Skeleton = ({ height = 16, width = "100%" }: { height?: number; width?: number | string }) => (
   <div className="skeleton" style={{ height, width }} aria-hidden="true" />
 );
 
 /** Page-shaped loading placeholder (no half-screen spinner). */
-export const PageSkeleton = ({ rows = 4 }: { rows?: number }) => (
-  <div className="stack stack--lg" aria-busy="true" aria-label="Loading">
+export const PageSkeleton = ({ rows = 4 }: { rows?: number }) => {
+  const { t } = useT();
+  return (
+  <div className="stack stack--lg" aria-busy="true" aria-label={t("state.loading")}>
     {Array.from({ length: rows }, (_, i) => (
       <div key={i} className="stack">
         <Skeleton height={18} width="30%" />
@@ -180,13 +189,17 @@ export const PageSkeleton = ({ rows = 4 }: { rows?: number }) => (
       </div>
     ))}
   </div>
-);
+  );
+};
 
-export const LoadingScreen = ({ label = "Loading…" }: { label?: string }) => (
+export const LoadingScreen = ({ label }: { label?: string }) => {
+  const { t } = useT();
+  return (
   <div className="loading-screen">
     <div className="stack" style={{ alignItems: "center" }}>
       <span className="spinner" aria-hidden="true" />
-      <p>{label}</p>
+      <p>{label ?? t("state.loadingDots")}</p>
     </div>
   </div>
-);
+  );
+};

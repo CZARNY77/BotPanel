@@ -4,21 +4,22 @@ import type { EventItem, EventPingMode, EventSignups, SignupStatus } from "../..
 import { Button, IconButton } from "../../components/ui/Button";
 import { ErrorState, Group, Pill, Skeleton } from "../../components/ui/basics";
 import { Icon, type IconName } from "../../components/ui/Icon";
+import { useT, type MessageKey } from "../../i18n";
 import { errorText, useToast } from "../../components/ui/Toast";
 import { useServerMeta } from "../../hooks/useServerMeta";
 import { useServerScope } from "../../hooks/useServerResource";
 import { dateParts, durationLabel, repeatLabel } from "./model";
 
-const STATUS: { key: SignupStatus; label: string; icon: IconName; tone: string }[] = [
-  { key: "Yes", label: "Going", icon: "yes", tone: "var(--cb-ok)" },
-  { key: "Maybe", label: "Maybe", icon: "maybe", tone: "var(--cb-warn)" },
-  { key: "No", label: "Not going", icon: "no", tone: "var(--cb-err)" },
+const STATUS: { key: SignupStatus; label: MessageKey; icon: IconName; tone: string }[] = [
+  { key: "Yes", label: "signup.going", icon: "yes", tone: "var(--cb-ok)" },
+  { key: "Maybe", label: "signup.maybe", icon: "maybe", tone: "var(--cb-warn)" },
+  { key: "No", label: "signup.notGoing", icon: "no", tone: "var(--cb-err)" },
 ];
 
-const PINGS: { mode: EventPingMode; label: string; title: string }[] = [
-  { mode: "unchecked", label: "No answer", title: "Ping role members who have not answered" },
-  { mode: "tentative", label: "Maybe", title: "Ping everyone who answered Maybe" },
-  { mode: "declined", label: "Not going", title: "Ping everyone who answered No" },
+const PINGS: { mode: EventPingMode; label: MessageKey; title: MessageKey }[] = [
+  { mode: "unchecked", label: "signup.noAnswer", title: "ping.noAnswerTitle" },
+  { mode: "tentative", label: "signup.maybe", title: "ping.maybeTitle" },
+  { mode: "declined", label: "signup.notGoing", title: "ping.notGoingTitle" },
 ];
 
 export const EventDetail = ({
@@ -32,6 +33,7 @@ export const EventDetail = ({
   onDelete: () => void;
   onOpen: (eventId: string) => void;
 }) => {
+  const { t, tn } = useT();
   const { serverId } = useServerScope();
   const { channelName, roleName } = useServerMeta();
   const toast = useToast();
@@ -44,7 +46,7 @@ export const EventDetail = ({
     setError(null);
     getEventSignups(serverId, event.id)
       .then(setSignups)
-      .catch((err) => setError(errorText(err, "Failed to load signups.")));
+      .catch((err) => setError(errorText(err, t("signups.loadFailed"))));
   };
 
   useEffect(() => load(), [serverId, event.id]);
@@ -53,9 +55,9 @@ export const EventDetail = ({
     setPinging(mode);
     try {
       const count = await pingEvent(serverId, event.id, mode);
-      toast.success(`Ping sent to ${count} member${count === 1 ? "" : "s"}.`);
+      toast.success(tn("ping.sent", count));
     } catch (err) {
-      toast.error(errorText(err, "Failed to ping."));
+      toast.error(errorText(err, t("ping.failed")));
     } finally {
       setPinging(null);
     }
@@ -67,8 +69,8 @@ export const EventDetail = ({
       title={event.title}
       actions={
         <>
-          <IconButton icon="edit" label={event.active ? "Edit event" : "Finished events cannot be edited"} disabled={!event.active} onClick={onEdit} />
-          <IconButton icon="trash" variant="danger" label="Delete event" onClick={onDelete} />
+          <IconButton icon="edit" label={t(event.active ? "events.edit" : "events.lockedEdit")} disabled={!event.active} onClick={onEdit} />
+          <IconButton icon="trash" variant="danger" label={t("events.delete")} onClick={onDelete} />
         </>
       }
     >
@@ -97,11 +99,11 @@ export const EventDetail = ({
           <div className="notice notice--info">
             <Icon name="lock" />
             <div className="grow">
-              <strong>Finished.</strong> Editing is locked so the series is not restarted by accident.
+              <strong>{t("events.finishedStrong")}</strong> {t("events.finishedNote")}
               {event.nextEventId ? (
                 <div>
                   <button type="button" className="link-button" onClick={() => onOpen(event.nextEventId!)}>
-                    Open the next instance
+                    {t("events.openNext")}
                   </button>
                 </div>
               ) : null}
@@ -113,46 +115,46 @@ export const EventDetail = ({
 
         <div className="signup-totals">
           {STATUS.map((s) => (
-            <div key={s.key} className="signup-total" style={{ color: s.tone }} title={s.label}>
+            <div key={s.key} className="signup-total" style={{ color: s.tone }} title={t(s.label)}>
               <Icon name={s.icon} />
               <span className="stat__value">{event.signups[s.key.toLowerCase() as "yes" | "no" | "maybe"]}</span>
-              <span className="stat__label">{s.label}</span>
+              <span className="stat__label">{t(s.label)}</span>
             </div>
           ))}
           {signups?.unchecked != null ? (
-            <div className="signup-total" title="Role members without an answer">
+            <div className="signup-total" title={t("signups.noAnswerTitle")}>
               <Icon name="bell" />
               <span className="stat__value">{signups.unchecked}</span>
-              <span className="stat__label">No answer</span>
+              <span className="stat__label">{t("signup.noAnswer")}</span>
             </div>
           ) : null}
         </div>
 
         {event.active ? (
           <div className="row">
-            <span className="muted small row"><Icon name="bell" size="sm" /> Ping</span>
+            <span className="muted small row"><Icon name="bell" size="sm" /> {t("ping.label")}</span>
             {PINGS.map((p) => (
               <Button
                 key={p.mode}
                 size="sm"
                 loading={pinging === p.mode}
                 disabled={Boolean(pinging) || (p.mode === "unchecked" && !event.roleId)}
-                title={p.mode === "unchecked" && !event.roleId ? "Set a role to use this ping" : p.title}
+                title={t(p.mode === "unchecked" && !event.roleId ? "ping.needRole" : p.title)}
                 onClick={() => void ping(p.mode)}
               >
-                {p.label}
+                {t(p.label)}
               </Button>
             ))}
           </div>
         ) : null}
 
         <div>
-          <h3 style={{ marginBottom: 8 }}>Signups</h3>
+          <h3 style={{ marginBottom: 8 }}>{t("signups.title")}</h3>
           {error ? <ErrorState message={error} onRetry={load} /> : null}
           {!signups && !error ? <Skeleton height={60} /> : null}
           {signups ? (
             signups.signups.length === 0 ? (
-              <p className="muted small">Nobody has answered yet.</p>
+              <p className="muted small">{t("signups.none")}</p>
             ) : (
               <div className="signup-groups">
                 {STATUS.map((s) => {
@@ -160,7 +162,7 @@ export const EventDetail = ({
                   if (!people.length) return null;
                   return (
                     <div key={s.key} className="row" style={{ alignItems: "flex-start" }}>
-                      <span style={{ color: s.tone }} title={s.label}><Icon name={s.icon} /></span>
+                      <span style={{ color: s.tone }} title={t(s.label)}><Icon name={s.icon} /></span>
                       <div className="chips grow">{people.map((p) => <Pill key={p.userId}>{p.name}</Pill>)}</div>
                     </div>
                   );

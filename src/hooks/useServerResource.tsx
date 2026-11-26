@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Server } from "../api/types";
+import { translate } from "../i18n";
 
 type Entry = { data?: unknown; promise?: Promise<unknown> };
 
@@ -70,7 +71,7 @@ export function useServerResource<T>(key: string, fetcher: (serverId: string) =>
         setDataState(result);
       } catch (err) {
         cache.set(key, {});
-        setError(err instanceof Error ? err.message : "Request failed.");
+        setError(err instanceof Error ? err.message : translate("error.request"));
       } finally {
         setLoading(false);
       }

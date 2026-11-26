@@ -78,15 +78,13 @@
   color: var(--cb-text-2);
 }
 
-@media (max-width: 640px) {
-  .bot-status__text,
-  .topbar__search {
-    display: none;
-  }
-
-  .bot-status {
-    padding: 0 8px;
-  }
+/* In the sidebar head the status is a quiet line under the server name. */
+.sidebar__server .bot-status {
+  height: auto;
+  padding: 0;
+  background: none;
+  font-size: var(--cb-fs-xs);
+  font-weight: 500;
 }
 
 /* ---------- Discord message preview (mimics Discord, uses --cb-discord-*) */

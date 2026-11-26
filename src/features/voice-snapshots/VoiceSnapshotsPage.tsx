@@ -10,15 +10,17 @@ import { errorText, useToast } from "../../components/ui/Toast";
 import { useEditable } from "../../hooks/useEditable";
 import { useServerMeta } from "../../hooks/useServerMeta";
 import { useServerResource, useServerScope } from "../../hooks/useServerResource";
+import { translate, useT } from "../../i18n";
 import { History, PAGE } from "./History";
 import { Schedules } from "./Schedules";
 
 const validate = (value: VoicePresenceSettings) =>
   value.schedules.some((s) => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(s.time) || s.dayOfWeek < 0 || s.dayOfWeek > 6)
-    ? "Every schedule needs a valid weekday and time (HH:MM)."
+    ? translate("voice.err.schedule")
     : null;
 
 export default function VoiceSnapshotsPage() {
+  const { t } = useT();
   const { serverId } = useServerScope();
   const toast = useToast();
   const meta = useServerMeta();
@@ -27,7 +29,7 @@ export default function VoiceSnapshotsPage() {
   const logs = useServerResource("voice-logs", (id) => getPresenceLogs(id, PAGE, 0));
   const serverSettings = useServerResource("settings", getServerSettings);
   const edit = useEditable(settings, {
-    label: "Voice snapshot settings",
+    label: t("voice.settingsLabel"),
     validate,
     save: (value) => updatePresenceSettings(serverId, value),
   });
@@ -41,9 +43,9 @@ export default function VoiceSnapshotsPage() {
     try {
       const log = await runPresence(serverId, value.manualChannelIds, value.manualName);
       logs.setData((prev) => [log, ...(prev ?? [])]);
-      toast.success(`Snapshot stored: ${log.totalMembers} members in ${log.totalChannels} channels.`);
+      toast.success(t("voice.stored", { members: log.totalMembers, channels: log.totalChannels }));
     } catch (err) {
-      toast.error(errorText(err, "Failed to take a snapshot."));
+      toast.error(errorText(err, t("voice.runFailed")));
     } finally {
       setRunning(false);
     }
@@ -63,11 +65,11 @@ export default function VoiceSnapshotsPage() {
       <PageHeader
         icon="voice"
         hue="var(--cb-hue-voice)"
-        title="Voice snapshots"
-        subtitle="Record who is sitting in voice channels, on demand or every week."
+        title={t("section.voice-snapshots")}
+        subtitle={t("voice.subtitle")}
         actions={
           <Button variant="primary" icon="play" loading={running} disabled={!value} onClick={() => void run()}>
-            Run now
+            {t("voice.runNow")}
           </Button>
         }
       />
@@ -78,15 +80,15 @@ export default function VoiceSnapshotsPage() {
             settings.loading ? <PageSkeleton rows={3} /> : null
           ) : (
             <>
-              <Group title="Manual snapshot" icon="play" description="Settings used by the Run now button.">
+              <Group title={t("voice.manualTitle")} icon="play" description={t("voice.manualDesc")}>
                 <div className="form-grid">
-                  <Field label="Label" hint="Shown in history">
-                    <TextInput value={value.manualName} placeholder="e.g. Weekly voice check" onChange={(manualName) => edit.set({ ...value, manualName })} />
+                  <Field label={t("voice.label")} hint={t("voice.labelHint")}>
+                    <TextInput value={value.manualName} placeholder={t("voice.labelPlaceholder")} onChange={(manualName) => edit.set({ ...value, manualName })} />
                   </Field>
-                  <Field label="Channels" hint="Empty = all voice channels">
+                  <Field label={t("voice.channels")} hint={t("voice.channelsHint")}>
                     <MultiSelectChips
-                      ariaLabel="Add voice channel"
-                      placeholder={meta.voiceChannels.length ? "Add a voice channel…" : "No voice channels"}
+                      ariaLabel={t("voice.addChannel")}
+                      placeholder={t(meta.voiceChannels.length ? "voice.addChannelPlaceholder" : "voice.noVoiceChannels")}
                       values={value.manualChannelIds}
                       onChange={(manualChannelIds) => edit.set({ ...value, manualChannelIds })}
                       options={meta.voiceChannels.map((c) => ({ value: c.id, label: c.name }))}

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { errorText, useToast } from "../components/ui/Toast";
 import type { Resource } from "./useServerResource";
+import { translate } from "../i18n";
 
 type Registration = {
   label: string;
@@ -148,10 +149,10 @@ export function useEditable<T>(
       const saved = await persist(draft);
       setResourceData(saved);
       setDraft(saved);
-      toast.success(successMessage ?? `${label} saved.`);
+      toast.success(successMessage ?? translate("edit.saved", { label }));
       return true;
     } catch (err) {
-      toast.error(errorText(err, `Failed to save ${label.toLowerCase()}.`));
+      toast.error(errorText(err, translate("edit.saveFailed", { label, lower: label.toLowerCase() })));
       return false;
     } finally {
       setSaving(false);

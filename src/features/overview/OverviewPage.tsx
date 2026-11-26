@@ -16,6 +16,7 @@ import { BotStatus } from "../../components/ui/BotStatus";
 import { useBotState } from "../../hooks/useBotState";
 import { openInvite } from "../../api/endpoints/servers";
 import { dateParts } from "../../components/ui/DateTile";
+import { useT } from "../../i18n";
 
 type Row = { key: string; label: string; icon: IconName; hue: string; to: string; on?: boolean; detail: ReactNode };
 
@@ -27,6 +28,7 @@ const Stat = ({ value, label, accent }: { value: ReactNode; label: string; accen
 );
 
 export default function OverviewPage() {
+  const { t, locale } = useT();
   const { server, serverId } = useServerScope();
   const meta = useServerMeta();
   const bot = useBotState();
@@ -47,15 +49,15 @@ export default function OverviewPage() {
   const latest = logs.data?.[0];
 
   const rows: Row[] = [
-    { key: "w", label: "Welcome", icon: "greetings", hue: "var(--cb-hue-greetings)", to: "greetings", on: welcome.data?.enabled, detail: meta.channelName.get(welcome.data?.channelId ?? "") },
-    { key: "f", label: "Farewell", icon: "greetings", hue: "var(--cb-hue-greetings)", to: "greetings", on: farewell.data?.enabled, detail: meta.channelName.get(farewell.data?.channelId ?? "") },
-    { key: "e", label: "Events", icon: "events", hue: "var(--cb-hue-events)", to: "events", on: upcoming.length > 0, detail: events.data ? `${upcoming.length} upcoming` : null },
-    { key: "v", label: "Voice schedules", icon: "voice", hue: "var(--cb-hue-voice)", to: "voice-snapshots", on: voice.data?.schedules.some((s) => s.enabled), detail: voice.data ? `${voice.data.schedules.filter((s) => s.enabled).length} active` : null },
-    { key: "t", label: "Emoji triggers", icon: "emoji", hue: "var(--cb-hue-emoji)", to: "emoji-triggers", on: (emoji.data?.triggers.length ?? 0) > 0, detail: emoji.data ? `${emoji.data.triggers.length} triggers` : null },
-    { key: "r", label: "Role reactions", icon: "reactions", hue: "var(--cb-hue-reactions)", to: "role-reactions", on: reactions.data?.enabled, detail: reactions.data ? `${reactions.data.messages.length} messages` : null },
-    { key: "a", label: "Auto role", icon: "autorole", hue: "var(--cb-hue-autorole)", to: "autorole", on: autorole.data?.enabled, detail: meta.roleName.get(autorole.data?.roleId ?? "") },
-    { key: "s", label: "Anti-spam", icon: "moderation", hue: "var(--cb-hue-moderation)", to: "moderation", on: antiSpam.data?.enabled, detail: antiSpam.data?.action === "auto" ? "Smart" : antiSpam.data?.action },
-    { key: "d", label: "Timeout DM", icon: "timer", hue: "var(--cb-hue-moderation)", to: "moderation", on: timeoutDm.data?.enabled, detail: null },
+    { key: "w", label: t("greet.welcome"), icon: "greetings", hue: "var(--cb-hue-greetings)", to: "greetings", on: welcome.data?.enabled, detail: meta.channelName.get(welcome.data?.channelId ?? "") },
+    { key: "f", label: t("greet.farewell"), icon: "greetings", hue: "var(--cb-hue-greetings)", to: "greetings", on: farewell.data?.enabled, detail: meta.channelName.get(farewell.data?.channelId ?? "") },
+    { key: "e", label: t("section.events"), icon: "events", hue: "var(--cb-hue-events)", to: "events", on: upcoming.length > 0, detail: events.data ? t("ov.upcoming", { n: upcoming.length }) : null },
+    { key: "v", label: t("ov.voiceSchedules"), icon: "voice", hue: "var(--cb-hue-voice)", to: "voice-snapshots", on: voice.data?.schedules.some((s) => s.enabled), detail: voice.data ? t("ov.active", { n: voice.data.schedules.filter((s) => s.enabled).length }) : null },
+    { key: "t", label: t("section.emoji-triggers"), icon: "emoji", hue: "var(--cb-hue-emoji)", to: "emoji-triggers", on: (emoji.data?.triggers.length ?? 0) > 0, detail: emoji.data ? t("ov.triggers", { n: emoji.data.triggers.length }) : null },
+    { key: "r", label: t("section.role-reactions"), icon: "reactions", hue: "var(--cb-hue-reactions)", to: "role-reactions", on: reactions.data?.enabled, detail: reactions.data ? t("ov.messages", { n: reactions.data.messages.length }) : null },
+    { key: "a", label: t("section.autorole"), icon: "autorole", hue: "var(--cb-hue-autorole)", to: "autorole", on: autorole.data?.enabled, detail: meta.roleName.get(autorole.data?.roleId ?? "") },
+    { key: "s", label: t("spam.title"), icon: "moderation", hue: "var(--cb-hue-moderation)", to: "moderation", on: antiSpam.data?.enabled, detail: antiSpam.data?.action === "auto" ? t("spam.smart") : antiSpam.data?.action === "timeout" ? t("spam.timeout") : antiSpam.data?.action === "delete" ? t("spam.delete") : antiSpam.data?.action },
+    { key: "d", label: t("dm.timeoutTitle"), icon: "timer", hue: "var(--cb-hue-moderation)", to: "moderation", on: timeoutDm.data?.enabled, detail: null },
   ];
 
   return (
@@ -64,19 +66,19 @@ export default function OverviewPage() {
         icon="overview"
         hue="var(--cb-hue-overview)"
         title={server.name}
-        subtitle={<span className="row"><BotStatus state={bot} /> <span>{server.role === "owner" ? "You own this server" : "You manage this server"}</span></span>}
-        actions={<Button icon="external" onClick={() => void openInvite(serverId)}>Invite link</Button>}
+        subtitle={<span className="row"><BotStatus state={bot} /> <span>{t(server.role === "owner" ? "ov.owner" : "ov.manager")}</span></span>}
+        actions={<Button icon="external" onClick={() => void openInvite(serverId)}>{t("ov.inviteLink")}</Button>}
       />
       <div className="stats overview-stats">
-        <Stat value={server.memberCount ?? "–"} label="Members" accent />
-        <Stat value={meta.loading ? <Skeleton height={30} width={40} /> : meta.channels.length} label="Text channels" />
-        <Stat value={meta.loading ? <Skeleton height={30} width={40} /> : meta.voiceChannels.length} label="Voice channels" />
-        <Stat value={meta.loading ? <Skeleton height={30} width={40} /> : meta.roles.length} label="Roles" />
-        <Stat value={events.data ? upcoming.length : <Skeleton height={30} width={40} />} label="Upcoming events" />
+        <Stat value={server.memberCount ?? "–"} label={t("stat.members")} accent />
+        <Stat value={meta.loading ? <Skeleton height={30} width={40} /> : meta.channels.length} label={t("ov.textChannels")} />
+        <Stat value={meta.loading ? <Skeleton height={30} width={40} /> : meta.voiceChannels.length} label={t("ov.voiceChannels")} />
+        <Stat value={meta.loading ? <Skeleton height={30} width={40} /> : meta.roles.length} label={t("ov.roles")} />
+        <Stat value={events.data ? upcoming.length : <Skeleton height={30} width={40} />} label={t("ov.upcomingEvents")} />
       </div>
 
       <div className="split" style={{ marginTop: 32 }}>
-        <Group title="Modules" icon="settings">
+        <Group title={t("ov.modules")} icon="settings">
           <div className="list">
             {rows.map((row) => (
               <Link key={row.key} to={`${base}/${row.to}`} className="list-row list-row--click module-row" style={{ "--hue": row.hue } as CSSProperties}>
@@ -85,7 +87,7 @@ export default function OverviewPage() {
                   <span className="list-row__title">{row.label}</span>
                   {row.detail ? <span className="list-row__meta">{row.detail}</span> : null}
                 </div>
-                {row.on === undefined ? <Skeleton height={20} width={44} /> : <Pill tone={row.on ? "ok" : "neutral"}><span className="dot" />{row.on ? "On" : "Off"}</Pill>}
+                {row.on === undefined ? <Skeleton height={20} width={44} /> : <Pill tone={row.on ? "ok" : "neutral"}><span className="dot" />{t(row.on ? "state.on" : "state.off")}</Pill>}
                 <Icon name="chevronRight" size="sm" />
               </Link>
             ))}
@@ -93,7 +95,7 @@ export default function OverviewPage() {
         </Group>
 
         <div className="stack stack--lg">
-          <Group title="Next event" icon="events" actions={<Link to={`${base}/events?new=1`} className="btn btn-ghost btn-sm"><Icon name="plus" size="sm" />New</Link>}>
+          <Group title={t("ov.nextEvent")} icon="events" actions={<Link to={`${base}/events?new=1`} className="btn btn-ghost btn-sm"><Icon name="plus" size="sm" />{t("action.new")}</Link>}>
             {!events.data ? (
               <Skeleton height={52} />
             ) : next ? (
@@ -107,29 +109,29 @@ export default function OverviewPage() {
                   <span className="list-row__meta num">{next.time} · {next.timezone}</span>
                 </div>
                 <div className="signup-mini">
-                  <span className="signup-mini__yes" title="Going">{next.signups.yes}</span>
-                  <span className="signup-mini__maybe" title="Maybe">{next.signups.maybe}</span>
-                  <span className="signup-mini__no" title="Not going">{next.signups.no}</span>
+                  <span className="signup-mini__yes" title={t("signup.going")}>{next.signups.yes}</span>
+                  <span className="signup-mini__maybe" title={t("signup.maybe")}>{next.signups.maybe}</span>
+                  <span className="signup-mini__no" title={t("signup.notGoing")}>{next.signups.no}</span>
                 </div>
               </Link>
             ) : (
-              <p className="muted">No upcoming events.</p>
+              <p className="muted">{t("ov.noEvents")}</p>
             )}
           </Group>
-          <Group title="Latest voice snapshot" icon="voice" actions={<Link to={`${base}/voice-snapshots?run=1`} className="btn btn-ghost btn-sm"><Icon name="play" size="sm" />Run</Link>}>
+          <Group title={t("ov.latestSnapshot")} icon="voice" actions={<Link to={`${base}/voice-snapshots?run=1`} className="btn btn-ghost btn-sm"><Icon name="play" size="sm" />{t("action.run")}</Link>}>
             {!logs.data ? (
               <Skeleton height={52} />
             ) : latest ? (
               <div className="stack">
                 <div className="stats">
-                  <Stat value={latest.totalMembers} label="Members" accent />
-                  <Stat value={latest.totalChannels} label="Channels" />
-                  <Stat value={latest.createdAt ? new Date(latest.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "–"} label={latest.createdAt ? new Date(latest.createdAt).toLocaleDateString("en-GB") : ""} />
+                  <Stat value={latest.totalMembers} label={t("stat.members")} accent />
+                  <Stat value={latest.totalChannels} label={t("stat.channels")} />
+                  <Stat value={latest.createdAt ? new Date(latest.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : "–"} label={latest.createdAt ? new Date(latest.createdAt).toLocaleDateString(locale) : ""} />
                 </div>
                 <div className="chips">{latest.channels.slice(0, 6).map((c) => <Pill key={c.id}>{c.name}</Pill>)}</div>
               </div>
             ) : (
-              <p className="muted">No snapshots yet.</p>
+              <p className="muted">{t("ov.noSnapshots")}</p>
             )}
           </Group>
         </div>

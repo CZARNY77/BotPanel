@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { getServers } from "../api/endpoints/servers";
 import type { Server } from "../api/types";
+import { translate } from "../i18n";
 
 type ServersValue = {
   servers: Server[];
@@ -40,7 +41,7 @@ export const ServersProvider = ({ children }: { children: ReactNode }) => {
     try {
       setServers(await getServers());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load servers.");
+      setError(err instanceof Error ? err.message : translate("error.servers"));
     } finally {
       setLoading(false);
     }

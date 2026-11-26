@@ -4,6 +4,7 @@ import { ColorInput, Field, RoleSelect, TextArea, TextInput } from "../form/fiel
 import { EmojiPicker } from "../form/EmojiPicker";
 import { Tabs, Toggle } from "../ui/basics";
 import { Icon } from "../ui/Icon";
+import { useT } from "../../i18n";
 
 export type ComposerValue = {
   type: "text" | "embed";
@@ -26,6 +27,7 @@ export const MessageComposer = ({
   allowAvatar?: boolean;
   idPrefix: string;
 }) => {
+  const { t } = useT();
   const [rolePicker, setRolePicker] = useState(false);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -45,7 +47,7 @@ export const MessageComposer = ({
   };
 
   const toolbar = (
-    <div className="composer-tools" role="toolbar" aria-label="Insert">
+    <div className="composer-tools" role="toolbar" aria-label={t("composer.insert")}>
       {variables.map((variable) => (
         <button
           key={variable}
@@ -53,13 +55,13 @@ export const MessageComposer = ({
           className="btn btn-ghost btn-sm"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => insert(variable)}
-          title={variable === "{user}" ? "Insert the member mention" : "Insert the server name"}
+          title={t(variable === "{user}" ? "composer.insertUser" : "composer.insertServer")}
         >
           <Icon name={variable === "{user}" ? "user" : "globe"} size="sm" />
           <span className="mono">{variable}</span>
         </button>
       ))}
-      <button type="button" className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => setRolePicker((v) => !v)} title="Mention a role" aria-label="Mention a role" aria-expanded={rolePicker}>
+      <button type="button" className="btn btn-ghost btn-icon btn-sm" onMouseDown={(e) => e.preventDefault()} onClick={() => setRolePicker((v) => !v)} title={t("composer.mentionRole")} aria-label={t("composer.mentionRole")} aria-expanded={rolePicker}>
         <Icon name="at" size="sm" />
       </button>
       <EmojiPicker onPick={insert} />
@@ -69,30 +71,30 @@ export const MessageComposer = ({
   return (
     <div className="stack">
       <Tabs
-        label="Message format"
+        label={t("composer.format")}
         value={value.type}
         onChange={(type) => onChange({ ...value, type })}
         tabs={[
-          { key: "text", label: "Text", icon: "greetings" },
-          { key: "embed", label: "Embed", icon: "image" },
+          { key: "text", label: t("composer.text"), icon: "greetings" },
+          { key: "embed", label: t("composer.embed"), icon: "image" },
         ]}
       />
       {value.type === "embed" ? (
         <div className="form-grid">
-          <Field label="Title" htmlFor={`${idPrefix}-title`}>
+          <Field label={t("composer.title")} htmlFor={`${idPrefix}-title`}>
             <TextInput id={`${idPrefix}-title`} value={value.embed.title} maxLength={256} onChange={(title) => onChange({ ...value, embed: { ...value.embed, title } })} />
           </Field>
-          <Field label="Colour">
-            <ColorInput label="Embed colour" value={value.embed.color} onChange={(color) => onChange({ ...value, embed: { ...value.embed, color } })} />
+          <Field label={t("composer.colour")}>
+            <ColorInput label={t("composer.embedColour")} value={value.embed.color} onChange={(color) => onChange({ ...value, embed: { ...value.embed, color } })} />
           </Field>
         </div>
       ) : null}
-      <Field label={value.type === "text" ? "Message" : "Description"} htmlFor={`${idPrefix}-body`}>
+      <Field label={t(value.type === "text" ? "composer.message" : "composer.description")} htmlFor={`${idPrefix}-body`}>
         <div className="row row--between">{toolbar}</div>
         {rolePicker ? (
           <RoleSelect
             value=""
-            ariaLabel="Role to mention"
+            ariaLabel={t("composer.roleToMention")}
             onChange={(roleId) => {
               if (roleId) insert(`<@&${roleId}>`);
               setRolePicker(false);
@@ -111,7 +113,7 @@ export const MessageComposer = ({
         />
       </Field>
       {value.type === "embed" && allowAvatar ? (
-        <Toggle label="Show the member's avatar" checked={Boolean(value.embed.showAvatar)} onChange={(showAvatar) => onChange({ ...value, embed: { ...value.embed, showAvatar } })} />
+        <Toggle label={t("composer.showAvatar")} checked={Boolean(value.embed.showAvatar)} onChange={(showAvatar) => onChange({ ...value, embed: { ...value.embed, showAvatar } })} />
       ) : null}
     </div>
   );

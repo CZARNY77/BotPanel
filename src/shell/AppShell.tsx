@@ -9,15 +9,15 @@ import { UnsavedChangesProvider, useUnsavedChanges } from "../hooks/useEditable"
 import { useHotkey } from "../hooks/useHotkey";
 import { ServerScope } from "../hooks/useServerResource";
 import { rememberServer, useServers } from "../hooks/useServers";
-import { BotStatus } from "../components/ui/BotStatus";
 import { useBotState } from "../hooks/useBotState";
+import { useT } from "../i18n";
 import { CommandPalette, type PaletteItem } from "./CommandPalette";
 import { NoBotPage } from "./NoBotPage";
 import { SectionOutlet } from "./SectionOutlet";
 import { sectionByKey, sectionPath, sections, type SectionKey } from "./sections";
+import { ServerRail } from "./ServerRail";
 import { Sidebar } from "./Sidebar";
 import { openInvite } from "../api/endpoints/servers";
-import { ServerSwitcher } from "./ServerSwitcher";
 import { UnsavedBar } from "./UnsavedBar";
 
 const COLLAPSED_KEY = "conqbot.sidebarCollapsed";
@@ -36,9 +36,11 @@ export const AppShell = () => (
   </UnsavedChangesProvider>
 );
 
+/** Layout: server rail | sidebar (server, sections, user panel) | content. No top bar. */
 const ShellInner = () => {
   const { serverId = "", section = "overview" } = useParams();
   const navigate = useNavigate();
+  const { t } = useT();
   const { user, signOut } = useAuth();
   const { servers, loading, error, reload } = useServers();
   const unsaved = useUnsavedChanges();
@@ -80,77 +82,74 @@ const ShellInner = () => {
       if (next.id === serverId) return;
       if (unsaved.block()) return;
       rememberServer(next.id);
+      setDrawer(false);
       navigate(sectionPath(next.id, sectionDef && !sectionDef.adminOnly ? sectionKey : "overview"));
     },
     [navigate, sectionDef, sectionKey, serverId, unsaved]
   );
 
-  const invite = async (id?: string) => {
-    try {
-      await openInvite(id);
-    } catch (err) {
-      toast.error(errorText(err, "Failed to open invite link."));
-    }
-  };
+  const invite = useCallback(
+    async (id?: string) => {
+      try {
+        await openInvite(id);
+      } catch (err) {
+        toast.error(errorText(err, t("error.invite")));
+      }
+    },
+    [toast, t]
+  );
 
   const paletteItems = useMemo<PaletteItem[]>(() => {
     const list: PaletteItem[] = sections
       .filter((s) => !s.adminOnly || isAdmin)
-      .map((s) => ({ id: `s-${s.key}`, group: "Sections", label: s.label, icon: s.icon, keywords: s.keywords, run: () => go(sectionPath(serverId, s.key)) }));
+      .map((s) => ({ id: `s-${s.key}`, group: "sections", label: t(s.label), icon: s.icon, keywords: s.keywords, run: () => go(sectionPath(serverId, s.key)) }));
     for (const s of servers) {
       list.push({
         id: `srv-${s.id}`,
-        group: "Servers",
+        group: "servers",
         label: s.name,
-        hint: s.botPresent ? undefined : "Add bot",
+        hint: s.botPresent ? undefined : t("action.addBot"),
         icon: s.botPresent ? "globe" : "plus",
         run: () => (s.botPresent ? selectServer(s) : void invite(s.id)),
       });
     }
     list.push(
-      { id: "a-event", group: "Actions", label: "New event", icon: "plus", keywords: "create schedule", run: () => go(sectionPath(serverId, "events", "?new=1")) },
-      { id: "a-snapshot", group: "Actions", label: "Run voice snapshot", icon: "play", keywords: "presence attendance now", run: () => go(sectionPath(serverId, "voice-snapshots", "?run=1")) },
-      { id: "a-invite", group: "Actions", label: "Invite bot", icon: "external", keywords: "add bot server", run: () => void invite(serverId) },
-      { id: "a-logout", group: "Actions", label: "Log out", icon: "logout", run: () => void signOut() }
+      { id: "a-event", group: "actions", label: t("palette.newEvent"), icon: "plus", keywords: "create schedule nowe", run: () => go(sectionPath(serverId, "events", "?new=1")) },
+      { id: "a-snapshot", group: "actions", label: t("palette.runSnapshot"), icon: "play", keywords: "presence attendance now obecność", run: () => go(sectionPath(serverId, "voice-snapshots", "?run=1")) },
+      { id: "a-invite", group: "actions", label: t("palette.invite"), icon: "external", keywords: "add bot server zaproś", run: () => void invite(serverId) },
+      { id: "a-logout", group: "actions", label: t("user.logout"), icon: "logout", run: () => void signOut() }
     );
     return list;
-  }, [servers, serverId, isAdmin, go, selectServer, signOut]);
+  }, [servers, serverId, isAdmin, go, selectServer, signOut, invite, t]);
 
-  if (loading && !servers.length) return <LoadingScreen label="Loading your servers…" />;
+  if (loading && !servers.length) return <LoadingScreen label={t("servers.loading")} />;
   if (!loading && !error && servers.length && !server) return <Navigate to="/dashboard" replace />;
   if (!sectionDef || (sectionDef.adminOnly && !isAdmin)) return <Navigate to={sectionPath(serverId, "overview")} replace />;
 
   return (
     <div className={`shell${collapsed ? " shell--collapsed" : ""}${drawer ? " shell--drawer" : ""}`}>
-      <Sidebar
-        serverId={serverId}
-        isAdmin={isAdmin}
-        collapsed={collapsed}
-        onToggleCollapsed={toggleCollapsed}
-        onSearch={() => setPalette(true)}
-        onNavigate={() => setDrawer(false)}
-        onInvite={() => void invite(serverId)}
-        guard={unsaved.block}
-      />
+      <div className="shell__nav">
+        <ServerRail servers={servers} currentId={serverId} onSelect={selectServer} onInvite={(id) => void invite(id)} />
+        <Sidebar
+          server={server}
+          serverId={serverId}
+          botState={botState}
+          user={user}
+          isAdmin={isAdmin}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          onSearch={() => setPalette(true)}
+          onNavigate={() => setDrawer(false)}
+          onSignOut={() => void signOut()}
+          guard={unsaved.block}
+        />
+      </div>
       <div className="drawer-backdrop" onClick={() => setDrawer(false)} aria-hidden="true" />
       <div className="main">
-        <header className="topbar">
-          <IconButton className="topbar__menu" icon="menu" label="Open menu" size="md" onClick={() => setDrawer(true)} />
-          <ServerSwitcher servers={servers} current={server} onSelect={selectServer} />
-          <span className="topbar__spacer" />
-          <IconButton icon="search" label="Search (Ctrl+K)" className="topbar__search" onClick={() => setPalette(true)} />
-          <BotStatus state={botState} />
-          <div className="topbar__user">
-            <span className="avatar" title={user?.username}>
-              {user?.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user?.username?.[0]?.toUpperCase()}
-            </span>
-            <span className="topbar__name small">{user?.username}</span>
-            <IconButton icon="logout" label="Log out" onClick={() => void signOut()} />
-          </div>
-        </header>
+        <IconButton className="shell__menu" icon="menu" label={t("shell.openMenu")} size="md" variant="secondary" onClick={() => setDrawer(true)} />
         <main className="content" id="main">
           {error ? (
-            <EmptyState icon="warning" title="Could not load your servers." action={<button className="btn btn-secondary" onClick={() => void reload()}>Retry</button>}>
+            <EmptyState icon="warning" title={t("servers.error")} action={<button className="btn btn-secondary" onClick={() => void reload()}>{t("action.retry")}</button>}>
               {error}
             </EmptyState>
           ) : server && !server.botPresent ? (

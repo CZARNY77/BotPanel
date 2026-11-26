@@ -1,10 +1,11 @@
 // Ctrl+K / Cmd+K palette: sections, servers and actions. Simple substring filter, no library.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "../components/ui/Icon";
+import { useT } from "../i18n";
 
 export type PaletteItem = {
   id: string;
-  group: "Sections" | "Servers" | "Actions";
+  group: "sections" | "servers" | "actions";
   label: string;
   hint?: string;
   icon: IconName;
@@ -21,6 +22,7 @@ const score = (item: PaletteItem, query: string) => {
 };
 
 export const CommandPalette = ({ items, onClose }: { items: PaletteItem[]; onClose: () => void }) => {
+  const { t } = useT();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -64,7 +66,7 @@ export const CommandPalette = ({ items, onClose }: { items: PaletteItem[]; onClo
   let lastGroup = "";
   return (
     <div className="overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Search">
+      <div className="palette" role="dialog" aria-modal="true" aria-label={t("search.label")}>
         <div className="palette__input">
           <Icon name="search" />
           <input
@@ -72,21 +74,21 @@ export const CommandPalette = ({ items, onClose }: { items: PaletteItem[]; onClo
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search sections, servers, actions…"
-            aria-label="Search"
+            placeholder={t("search.placeholder")}
+            aria-label={t("search.label")}
             aria-controls="palette-list"
             aria-activedescendant={results[active] ? `palette-${results[active].id}` : undefined}
           />
           <kbd>Esc</kbd>
         </div>
         <div className="palette__list" id="palette-list" role="listbox" ref={listRef}>
-          {results.length === 0 ? <div className="option-empty">Nothing matches “{query}”.</div> : null}
+          {results.length === 0 ? <div className="option-empty">{t("search.nothing", { query })}</div> : null}
           {results.map((item, index) => {
             const header = item.group !== lastGroup ? item.group : null;
             lastGroup = item.group;
             return (
               <div key={item.id}>
-                {header ? <div className="palette__group">{header}</div> : null}
+                {header ? <div className="palette__group">{t(`palette.${item.group}`)}</div> : null}
                 <button
                   type="button"
                   id={`palette-${item.id}`}
@@ -106,8 +108,8 @@ export const CommandPalette = ({ items, onClose }: { items: PaletteItem[]; onClo
           })}
         </div>
         <div className="palette__foot muted xs">
-          <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
-          <span><kbd>Enter</kbd> open</span>
+          <span><kbd>↑</kbd> <kbd>↓</kbd> {t("search.move")}</span>
+          <span><kbd>Enter</kbd> {t("search.open")}</span>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@
   --cb-surface-alt: #24282c;
   --cb-hover: #2a2e33;
   --cb-glass: rgb(30 33 36 / 0.8); /* sidebar: semi-transparent card + blur */
+  --cb-rail: #161819;              /* server rail, darker than the sidebar (like Discord) */
 
   /* text (contrast on --cb-bg: 18.1 / 11.9 / 6.6) */
   --cb-text: #f7f7f7;
@@ -74,7 +75,10 @@
   /* layout */
   --cb-sidebar-w: 240px;
   --cb-sidebar-w-collapsed: 60px;
-  --cb-topbar-h: 56px;
+  --cb-rail-w: 72px;
+  --cb-rail-icon: 44px;
+  --cb-brand-h: 68px;             /* logo block and sidebar head share this height */
+  --cb-public-nav-h: 56px;        /* top bar of public pages only; the dashboard has none */
   --cb-content-max: 1320px;
 
   /* page glow (ConqSite body background) */

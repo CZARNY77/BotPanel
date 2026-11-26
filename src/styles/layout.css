@@ -90,7 +90,7 @@
 
 .sticky-col {
   position: sticky;
-  top: calc(var(--cb-topbar-h) + var(--cb-space-5));
+  top: var(--cb-space-5);
 }
 
 .cols-3 {
